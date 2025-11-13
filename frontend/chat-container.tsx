@@ -44,9 +44,9 @@ export function ChatContainer() {
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!input.trim()) {
-            // Require prompt before sending
-            alert("Vui lòng nhập prompt để tạo video.");
+        if (!input.trim() && !uploadedImage) {
+            // Require prompt before sending unless an image is attached
+            alert("Vui lòng nhập prompt để tạo video hoặc chọn một ảnh.");
             return;
         }
 
@@ -86,11 +86,32 @@ export function ChatContainer() {
             });
 
             if (!response.ok) {
-                const text = await response.text().catch(() => "");
-                throw new Error(`Generate failed: ${response.status} ${text}`);
+                let errorMessage = "Không thể tạo video";
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData?.error || errorMessage;
+                } catch {
+                    // If JSON parse fails, try text
+                    const text = await response.text().catch(() => "");
+                    if (text) errorMessage = text;
+                }
+                throw new Error(errorMessage);
             }
 
             const data = await response.json();
+
+            // If backend returned a Gemini description for image-only request, show it
+            if (data?.description) {
+                const botMessage: Message = {
+                    id: (Date.now() + 1).toString(),
+                    text: data.description,
+                    sender: "bot",
+                    timestamp: new Date(),
+                };
+                setMessages((prev) => [...prev, botMessage]);
+                setIsLoading(false);
+                return;
+            }
 
             // If the server already returned resultUrls, show immediately
             if (
@@ -211,7 +232,10 @@ export function ChatContainer() {
             console.error("Error sending message:", error);
             const errorMessage: Message = {
                 id: (Date.now() + 1).toString(),
-                text: "Lỗi: Không nhận được phản hồi từ dịch vụ.",
+                text:
+                    error instanceof Error
+                        ? error.message
+                        : "Lỗi: Không nhận được phản hồi từ dịch vụ.",
                 sender: "bot",
                 timestamp: new Date(),
             };
@@ -488,7 +512,9 @@ export function ChatContainer() {
                         />
                         <Button
                             type="submit"
-                            disabled={isLoading || !input.trim()}
+                            disabled={
+                                isLoading || (!input.trim() && !uploadedImage)
+                            }
                             size="icon"
                             className="bg-primary hover:bg-primary/90"
                         >
