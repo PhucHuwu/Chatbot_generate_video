@@ -53,21 +53,16 @@ export async function POST(request: NextRequest) {
             body?.prompt && String(body.prompt).trim() !== ""
         );
 
-        // If prompt is empty but an image was provided, set the special auto-prompt
-        // The prompt instructs the downstream system to describe the character in the image
+        // If prompt is empty but an image was provided, use the hard-coded Gemini prompt inside the service
         if (!prompt && image_url) {
-            prompt = `hãy mô tả nhân vật trong bức ảnh (cử chỉ, tư thế,...), hãy chỉ trả về đoạn mô tả, không ghi chú gì thêm`;
             console.log(
-                "No prompt provided; using auto-prompt for image-only request."
+                "No prompt provided; calling gemini-service which uses its internal auto-prompt for image-only request."
             );
 
             // Send image + prompt to Gemini to obtain a description. For this step we will
             // only log and return the description to the client (do NOT send to KIE yet).
             try {
-                const description = await describeImageWithGemini(
-                    image_url,
-                    prompt
-                );
+                const description = await describeImageWithGemini(image_url);
                 console.log("Gemini description:", description);
 
                 // Send Gemini output to Groq, stream/logging occurs inside helper
@@ -78,7 +73,6 @@ export async function POST(request: NextRequest) {
                     return NextResponse.json({
                         description,
                         groqOutput,
-                        usedPrompt: prompt,
                         image_url,
                     });
                 } catch (gErr: any) {
@@ -87,7 +81,6 @@ export async function POST(request: NextRequest) {
                     return NextResponse.json({
                         description,
                         groqError: gErr?.message || String(gErr),
-                        usedPrompt: prompt,
                         image_url,
                     });
                 }

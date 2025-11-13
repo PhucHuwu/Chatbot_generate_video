@@ -27,10 +27,7 @@ async function fetchImageAsPart(imageUrl: string): Promise<Part> {
  * Send image + prompt to Gemini (gemini-2.5-flash) and return the text description.
  * Requires GOOGLE_API_KEY or GEMINI_API_KEY in environment.
  */
-export async function describeImageWithGemini(
-    imageUrl: string,
-    prompt: string
-) {
+export async function describeImageWithGemini(imageUrl: string) {
     const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
     if (!apiKey) {
         throw new Error(
@@ -39,6 +36,9 @@ export async function describeImageWithGemini(
     }
 
     const ai = new GoogleGenAI({ apiKey });
+
+    // Hard-coded prompt for Gemini (image-only requests)
+    const prompt = `Hãy mô tả nhân vật trong bức ảnh (cử chỉ, tư thế,...), hãy chỉ trả về đoạn mô tả, không ghi chú gì thêm.`;
 
     const imagePart = await fetchImageAsPart(imageUrl);
 
