@@ -32,6 +32,23 @@ interface Message {
     timestamp: Date;
     // taskId for retry/manual polling
     taskId?: string;
+    // whether this message represents an ongoing processing state (show animated ellipsis)
+    processing?: boolean;
+}
+
+function AnimatedEllipsis({ interval = 400 }: { interval?: number }) {
+    const [count, setCount] = useState(0);
+    useEffect(() => {
+        const t = window.setInterval(() => {
+            setCount((c) => (c + 1) % 4);
+        }, interval);
+        return () => clearInterval(t);
+    }, [interval]);
+    return (
+        <span aria-hidden className="inline-block w-6">
+            {".".repeat(count)}
+        </span>
+    );
 }
 
 export function ChatContainer() {
@@ -275,9 +292,10 @@ export function ChatContainer() {
                 const tempId = (Date.now() + 1).toString();
                 const processingMessage: Message = {
                     id: tempId,
-                    text: "Đang tạo video — quá trình có thể mất khoảng 30–60 giây. Vui lòng chờ trong giây lát. Vui lòng không đóng hay tải lại trang này.",
+                    text: "Đang tạo video — quá trình có thể mất khoảng 30–60 giây. Vui lòng chờ trong giây lát. Vui lòng không đóng hay tải lại trang này",
                     sender: "bot",
                     timestamp: new Date(),
+                    processing: true,
                     thinking:
                         thinkingDescription || thinkingGroq
                             ? {
@@ -464,12 +482,13 @@ export function ChatContainer() {
                     setMessages((prev) =>
                         prev.map((m) =>
                             m.id === tempId
-                                ? {
-                                      ...m,
-                                      text: "Quá trình tạo video đang mất nhiều thời gian hơn dự kiến. Đang tiếp tục kiểm tra... Vui lòng không đóng hay tải lại trang này.",
-                                      // Store taskId in a custom field for manual retry
-                                      taskId: data.taskId,
-                                  }
+                                        ? {
+                                              ...m,
+                                              text: "Quá trình tạo video đang mất nhiều thời gian hơn dự kiến. Đang tiếp tục kiểm tra. Vui lòng không đóng hay tải lại trang này",
+                                              // Store taskId in a custom field for manual retry
+                                              taskId: data.taskId,
+                                              processing: true,
+                                          }
                                 : m
                         )
                     );
@@ -771,6 +790,7 @@ export function ChatContainer() {
                                         >
                                             <p className="break-words">
                                                 {message.text}
+                                                {message.processing && <AnimatedEllipsis />}
                                             </p>
                                             <p className="text-xs mt-1 opacity-70">
                                                 {message.timestamp.toLocaleTimeString(
@@ -902,6 +922,7 @@ export function ChatContainer() {
                                     {message.text && (
                                         <p className="break-words">
                                             {message.text}
+                                            {message.processing && <AnimatedEllipsis />}
                                         </p>
                                     )}
                                     <p className="text-xs mt-1 opacity-70">
