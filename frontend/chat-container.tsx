@@ -263,7 +263,7 @@ export function ChatContainer() {
                 // Start polling in background
                 (async () => {
                     const maxChecks = 60; // up to ~120s with 2s interval
-                    const intervalMs = 2000;
+                    const intervalMs = 3000;
                     for (let i = 0; i < maxChecks; i++) {
                         try {
                             const statusRes = await fetch(
