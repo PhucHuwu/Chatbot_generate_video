@@ -303,7 +303,7 @@ export function ChatContainer() {
                                     Chào mừng đến với Chatbot tạo video
                                 </p>
                                 <p className="text-sm">
-                                    Nhập mô tả (prompt) để bắt đầu tạo video
+                                    Nhập mô tả để bắt đầu tạo video
                                 </p>
                             </div>
                         </div>
@@ -476,7 +476,7 @@ export function ChatContainer() {
                     <form onSubmit={handleSendMessage} className="flex gap-2">
                         <Input
                             type="text"
-                            placeholder="Nhập mô tả (prompt) của bạn..."
+                            placeholder="Nhập mô tả của bạn..."
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             disabled={isLoading}
