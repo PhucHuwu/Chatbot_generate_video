@@ -25,6 +25,11 @@ interface Message {
 export function ChatContainer() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
+    const [uploadedImage, setUploadedImage] = useState<{
+        src: string;
+        fileName: string;
+        size: number;
+    } | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -39,26 +44,45 @@ export function ChatContainer() {
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!input.trim()) return;
+        if (!input.trim()) {
+            // Require prompt before sending
+            alert("Vui lòng nhập prompt để tạo video.");
+            return;
+        }
 
         // Add user message
         const userMessage: Message = {
             id: Date.now().toString(),
             text: input,
+            image: uploadedImage
+                ? {
+                      src: uploadedImage.src,
+                      fileName: uploadedImage.fileName,
+                      size: uploadedImage.size,
+                  }
+                : undefined,
             sender: "user",
             timestamp: new Date(),
         };
 
         setMessages((prev) => [...prev, userMessage]);
+        // Clear the small preview immediately when the user sends the message
+        setUploadedImage(null);
         setInput("");
         setIsLoading(true);
 
         try {
             // Call our backend generate endpoint which handles the external API and polling
+            const body: any = { prompt: input };
+            if (uploadedImage) {
+                body.imageBase64 = uploadedImage.src;
+                body.fileName = uploadedImage.fileName;
+            }
+
             const response = await fetch("/api/generate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ prompt: input }),
+                body: JSON.stringify(body),
             });
 
             if (!response.ok) {
@@ -102,7 +126,7 @@ export function ChatContainer() {
                 const tempId = (Date.now() + 1).toString();
                 const processingMessage: Message = {
                     id: tempId,
-                    text: `Tác vụ đang xử lý (taskId: ${data.taskId})...`,
+                    text: "Đang tạo video — quá trình có thể mất khoảng 30–60 giây. Vui lòng chờ trong giây lát.",
                     sender: "bot",
                     timestamp: new Date(),
                 };
@@ -154,13 +178,13 @@ export function ChatContainer() {
                         await new Promise((r) => setTimeout(r, intervalMs));
                     }
 
-                    // If we reach here, timed out — update message to indicate waiting
+                    // If we reach here, timed out — update message to a generic waiting notice
                     setMessages((prev) =>
                         prev.map((m) =>
                             m.id === tempId
                                 ? {
                                       ...m,
-                                      text: `Tác vụ vẫn đang xử lý (taskId: ${data.taskId}). Hãy kiểm tra lại sau.`,
+                                      text: "Quá trình tạo video vẫn đang được xử lý và có thể mất thêm thời gian. Vui lòng kiểm tra lại sau.",
                                   }
                                 : m
                         )
@@ -222,67 +246,13 @@ export function ChatContainer() {
             reader.onload = async (event) => {
                 const base64String = event.target?.result as string;
 
-                // Add user image message
-                const userImageMessage: Message = {
-                    id: Date.now().toString(),
-                    image: {
-                        src: base64String,
-                        fileName: file.name,
-                        size: file.size,
-                    },
-                    sender: "user",
-                    timestamp: new Date(),
-                };
-
-                setMessages((prev) => [...prev, userImageMessage]);
-
-                try {
-                    const uploadResponse = await fetch("/api/chat", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                            imageBase64: base64String,
-                            fileName: file.name,
-                        }),
-                    });
-
-                    if (!uploadResponse.ok) {
-                        // Try to include server response body for better debugging
-                        const text = await uploadResponse
-                            .text()
-                            .catch(() => "");
-                        throw new Error(
-                            `Failed to upload image: ${uploadResponse.status} ${text}`
-                        );
-                    }
-
-                    const uploadData = await uploadResponse.json();
-
-                    // Bot response with image info
-                    const botMessage: Message = {
-                        id: (Date.now() + 1).toString(),
-                        text: `Đã nhận ảnh: ${uploadData.fileName} (${(
-                            uploadData.size / 1024
-                        ).toFixed(2)} KB)`,
-                        sender: "bot",
-                        timestamp: new Date(uploadData.timestamp),
-                    };
-
-                    setMessages((prev) => [...prev, botMessage]);
-                } catch (error) {
-                    console.error("Error uploading image:", error);
-                    const errorMessage: Message = {
-                        id: (Date.now() + 1).toString(),
-                        text: "Lỗi: Không thể tải ảnh lên",
-                        sender: "bot",
-                        timestamp: new Date(),
-                    };
-                    setMessages((prev) => [...prev, errorMessage]);
-                } finally {
-                    setIsLoading(false);
-                }
+                // Show small preview near the input (do not add as chat message)
+                setUploadedImage({
+                    src: base64String,
+                    fileName: file.name,
+                    size: file.size,
+                });
+                setIsLoading(false);
             };
             reader.readAsDataURL(file);
         } catch (error) {
@@ -404,6 +374,37 @@ export function ChatContainer() {
             {/* Input Area */}
             <footer className="border-t border-border bg-card p-4">
                 <div className="max-w-4xl mx-auto">
+                    {/* Uploaded image preview shown above input (not as a sent message) */}
+                    {uploadedImage && (
+                        <div className="mb-2 flex items-center gap-3">
+                            <img
+                                src={uploadedImage.src}
+                                alt={uploadedImage.fileName}
+                                className="w-20 h-14 object-cover rounded"
+                            />
+                            <div className="flex-1 text-sm">
+                                <div className="font-medium">
+                                    {uploadedImage.fileName}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                    {(uploadedImage.size / 1024).toFixed(2)} KB
+                                </div>
+                            </div>
+                            <div>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                        setUploadedImage(null);
+                                        if (fileInputRef.current)
+                                            fileInputRef.current.value = "";
+                                    }}
+                                >
+                                    Hủy
+                                </Button>
+                            </div>
+                        </div>
+                    )}
                     <form onSubmit={handleSendMessage} className="flex gap-2">
                         <Input
                             type="text"
