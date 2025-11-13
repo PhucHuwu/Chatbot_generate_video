@@ -29,7 +29,11 @@ if (!API_KEY) {
     );
 }
 
-async function createTask(model: string, input: any, callBackUrl?: string) {
+export async function createTask(
+    model: string,
+    input: any,
+    callBackUrl?: string
+) {
     const body: any = { model, input };
     if (callBackUrl) body.callBackUrl = callBackUrl;
 
@@ -121,7 +125,10 @@ export async function generateMedia(
     // the prompt for downstream generation if prompt was empty.
     let geminiDescription: string | undefined;
     let groqOutput: string | undefined;
-    if ((typeof input.prompt !== "string" || input.prompt.trim() === "") && input.image_url) {
+    if (
+        (typeof input.prompt !== "string" || input.prompt.trim() === "") &&
+        input.image_url
+    ) {
         try {
             geminiDescription = await describeImageWithGemini(input.image_url);
             console.log("Gemini description:", geminiDescription);
@@ -150,7 +157,11 @@ export async function generateMedia(
         : "kling/v2-5-turbo-text-to-video-pro";
 
     const createPayload: any = {
-        prompt: input.prompt,
+        // Prefer Groq output as the prompt when available (image->Gemini->Groq flow)
+        prompt:
+            typeof groqOutput === "string" && groqOutput.trim() !== ""
+                ? groqOutput
+                : input.prompt,
         // Use default 10 seconds when not provided. Keep explicit "5" if requested.
         duration: input.duration ?? "10",
         negative_prompt:
@@ -234,7 +245,13 @@ export async function generateMedia(
         }
 
         if (state === "fail") {
-            return { taskId, state: "fail", raw: info, geminiDescription, groqOutput };
+            return {
+                taskId,
+                state: "fail",
+                raw: info,
+                geminiDescription,
+                groqOutput,
+            };
         }
 
         // waiting -> sleep and retry

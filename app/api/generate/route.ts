@@ -1,6 +1,6 @@
 import "@/lib/early-warnings"; // register warning handler early to suppress known upstream deprecation warnings
 import { NextRequest, NextResponse } from "next/server";
-import generateMedia from "@/backend/generate-service";
+import generateMedia, { createTask } from "@/backend/generate-service";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { describeImageWithGemini } from "@/backend/gemini-service";
 import { sendToGroq } from "@/backend/groq-service";
@@ -63,37 +63,20 @@ export async function POST(request: NextRequest) {
             body?.prompt && String(body.prompt).trim() !== ""
         );
 
-        // If prompt is empty but an image was provided, use the hard-coded Gemini prompt inside the service
+        // If prompt is empty but an image was provided, obtain Gemini description and Groq output
+        // then continue to call generateMedia so KIE can produce the final video. Prefer Groq output
+        // as the prompt for KIE; fall back to Gemini description when Groq fails.
         if (!prompt && image_url) {
             console.log(
                 "No prompt provided; calling gemini-service which uses its internal auto-prompt for image-only request."
             );
 
-            // Send image + prompt to Gemini to obtain a description. For this step we will
-            // only log and return the description to the client (do NOT send to KIE yet).
+            let description: string | undefined;
+            let groqOutput: string | undefined;
+
             try {
-                const description = await describeImageWithGemini(image_url);
+                description = await describeImageWithGemini(image_url);
                 console.log("Gemini description:", description);
-
-                // Send Gemini output to Groq, stream/logging occurs inside helper
-                try {
-                    const groqOutput = await sendToGroq(description);
-                    console.log("Groq output:", groqOutput);
-
-                    return NextResponse.json({
-                        description,
-                        groqOutput,
-                        image_url,
-                    });
-                } catch (gErr: any) {
-                    console.error("Groq processing failed:", gErr);
-                    // Return Gemini description and the groq error message (but don't fail silently)
-                    return NextResponse.json({
-                        description,
-                        groqError: gErr?.message || String(gErr),
-                        image_url,
-                    });
-                }
             } catch (e: any) {
                 console.error("Gemini describe failed:", e);
                 return NextResponse.json(
@@ -101,6 +84,116 @@ export async function POST(request: NextRequest) {
                     { status: 500 }
                 );
             }
+
+            // Try Groq; if it fails, log and continue using the Gemini description as prompt
+            try {
+                groqOutput = await sendToGroq(description || "");
+                console.log("Groq output:", groqOutput);
+            } catch (gErr: any) {
+                console.error("Groq processing failed:", gErr);
+                groqOutput = undefined;
+            }
+
+            // Use Groq output when available, otherwise fall back to Gemini description
+            prompt =
+                typeof groqOutput === "string" && groqOutput.trim() !== ""
+                    ? groqOutput
+                    : description || "";
+
+            // Create a KIE task immediately so the client can poll while seeing the AI 'thinking'
+            const durationForCreate = body?.duration === "5" ? "5" : "10";
+            const negativeForCreate =
+                typeof body?.negative_prompt === "string"
+                    ? body.negative_prompt
+                    : undefined;
+            const cfgForCreate =
+                typeof body?.cfg_scale === "number"
+                    ? body.cfg_scale
+                    : undefined;
+
+            const model = image_url
+                ? "kling/v2-5-turbo-image-to-video-pro"
+                : "kling/v2-5-turbo-text-to-video-pro";
+
+            const createPayload: any = {
+                prompt,
+                duration: durationForCreate ?? "10",
+                negative_prompt:
+                    negativeForCreate ?? "blur, distort, and low quality",
+                cfg_scale:
+                    typeof cfgForCreate === "number" ? cfgForCreate : 0.3,
+            };
+            if (image_url) createPayload.image_url = image_url;
+
+            // Attempt to create task, with fallback on 503/unavailable
+            let createResp: any;
+            try {
+                createResp = await createTask(
+                    model,
+                    createPayload,
+                    body?.callBackUrl
+                );
+            } catch (err: any) {
+                const msg = String(err?.message || err);
+                if (msg.includes("503") || /unavailab/i.test(msg)) {
+                    console.warn(
+                        "createTask failed with 503/unavailable — falling back to gemini-2.0-flash-lite",
+                        { err: msg }
+                    );
+                    try {
+                        createResp = await createTask(
+                            "gemini-2.0-flash-lite",
+                            createPayload,
+                            body?.callBackUrl
+                        );
+                    } catch (err2: any) {
+                        console.error(
+                            "Both primary and fallback createTask failed:",
+                            err2
+                        );
+                        return NextResponse.json(
+                            { error: String(err2?.message || err2) },
+                            { status: 500 }
+                        );
+                    }
+                } else {
+                    console.error("createTask failed:", err);
+                    return NextResponse.json(
+                        { error: String(err?.message || err) },
+                        { status: 500 }
+                    );
+                }
+            }
+
+            const taskId =
+                createResp?.data?.taskId ||
+                createResp?.taskId ||
+                createResp?.data?.id ||
+                createResp?.id;
+            if (!taskId) {
+                console.error("createTask returned no taskId", { createResp });
+                let summary = "";
+                try {
+                    summary = JSON.stringify(createResp);
+                } catch (e) {
+                    summary = String(createResp);
+                }
+                return NextResponse.json(
+                    {
+                        error: `No taskId returned from createTask; response: ${summary}`,
+                    },
+                    { status: 500 }
+                );
+            }
+
+            // Return immediate response containing the Gemini/Groq outputs and the taskId for polling
+            return NextResponse.json({
+                description,
+                groqOutput,
+                image_url,
+                taskId,
+                state: "waiting",
+            });
         }
 
         // If there's still no prompt (no prompt and no image), return error

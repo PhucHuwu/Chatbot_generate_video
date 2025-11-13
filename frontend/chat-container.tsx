@@ -14,6 +14,16 @@ interface Message {
         fileName: string;
         size: number;
     };
+    thinking?: {
+        // raw Gemini description and optional Groq-processed output
+        description?: string;
+        groqOutput?: string;
+        // whether the thinking block is collapsed (hidden) in the UI
+        collapsed?: boolean;
+        // visible (streamed) fragments
+        visibleDescription?: string;
+        visibleGroq?: string;
+    };
     media?: {
         src: string;
         type: "video" | "image" | "unknown";
@@ -33,14 +43,117 @@ export function ChatContainer() {
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const streamTimersRef = useRef<Map<string, number>>(new Map());
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
+    const toggleThinking = (id: string) => {
+        setMessages((prev) =>
+            prev.map((m) =>
+                m.id === id && m.thinking
+                    ? {
+                          ...m,
+                          thinking: {
+                              ...m.thinking,
+                              collapsed: !m.thinking.collapsed,
+                          },
+                      }
+                    : m
+            )
+        );
+    };
+
+    // Start a fake streaming effect for the thinking block of a message.
+    const startFakeThinkingStream = (
+        id: string,
+        fullDescription: string | undefined,
+        fullGroq: string | undefined
+    ) => {
+        // clear existing timer if any
+        const existing = streamTimersRef.current.get(id);
+        if (existing) {
+            clearInterval(existing);
+            streamTimersRef.current.delete(id);
+        }
+
+        const desc = fullDescription || "";
+        const groq = fullGroq || "";
+
+        // We'll reveal description first, then groq with a small pause
+        let descIndex = 0;
+        let groqIndex = 0;
+        let phase: "desc" | "pause" | "groq" = desc
+            ? "desc"
+            : groq
+            ? "groq"
+            : "desc";
+
+        const intervalMs = 40; // speed of fake typing
+        const timer = window.setInterval(() => {
+            setMessages((prev) =>
+                prev.map((m) => {
+                    if (m.id !== id || !m.thinking) return m;
+
+                    const newThinking = { ...m.thinking } as any;
+
+                    if (phase === "desc") {
+                        descIndex += Math.max(1, Math.floor(Math.random() * 3));
+                        if (descIndex >= desc.length) {
+                            descIndex = desc.length;
+                            newThinking.visibleDescription = desc.slice(
+                                0,
+                                descIndex
+                            );
+                            if (groq) phase = "pause";
+                        } else {
+                            newThinking.visibleDescription = desc.slice(
+                                0,
+                                descIndex
+                            );
+                        }
+                    } else if (phase === "pause") {
+                        // short pause before groq
+                        phase = "groq";
+                    } else if (phase === "groq") {
+                        groqIndex += Math.max(1, Math.floor(Math.random() * 3));
+                        if (groqIndex >= groq.length) {
+                            groqIndex = groq.length;
+                            newThinking.visibleGroq = groq.slice(0, groqIndex);
+                            // done
+                            const t = streamTimersRef.current.get(id);
+                            if (t) {
+                                clearInterval(t);
+                                streamTimersRef.current.delete(id);
+                            }
+                        } else {
+                            newThinking.visibleGroq = groq.slice(0, groqIndex);
+                        }
+                    }
+
+                    return {
+                        ...m,
+                        thinking: { ...m.thinking, ...newThinking },
+                    };
+                })
+            );
+        }, intervalMs);
+
+        streamTimersRef.current.set(id, timer);
+    };
+
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
+
+    // cleanup any running stream timers on unmount
+    useEffect(() => {
+        return () => {
+            streamTimersRef.current.forEach((t) => clearInterval(t));
+            streamTimersRef.current.clear();
+        };
+    }, []);
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -92,30 +205,10 @@ export function ChatContainer() {
 
             const data = await response.json();
 
-            // If backend returned a Gemini description for image-only request, show it
-            if (data?.description) {
-                const botMessage: Message = {
-                    id: (Date.now() + 1).toString(),
-                    text: data.description,
-                    sender: "bot",
-                    timestamp: new Date(),
-                };
-                setMessages((prev) => [...prev, botMessage]);
-
-                // If Groq also returned an output, show it as a separate bot message (like a follow-up)
-                if (data?.groqOutput) {
-                    const groqMessage: Message = {
-                        id: (Date.now() + 2).toString(),
-                        text: data.groqOutput,
-                        sender: "bot",
-                        timestamp: new Date(),
-                    };
-                    setMessages((prev) => [...prev, groqMessage]);
-                }
-
-                setIsLoading(false);
-                return;
-            }
+            // If backend returned Gemini/Groq outputs, prepare a 'thinking' block
+            const thinkingDescription =
+                data?.description || data?.geminiDescription || undefined;
+            const thinkingGroq = data?.groqOutput || undefined;
 
             // If the server already returned resultUrls, show immediately
             if (
@@ -130,6 +223,14 @@ export function ChatContainer() {
                     media: { src: videoUrl, type: "video" },
                     sender: "bot",
                     timestamp: new Date(),
+                    thinking:
+                        thinkingDescription || thinkingGroq
+                            ? {
+                                  description: thinkingDescription,
+                                  groqOutput: thinkingGroq,
+                                  collapsed: true,
+                              }
+                            : undefined,
                 };
                 setMessages((prev) => [...prev, botMessage]);
             } else if (
@@ -144,6 +245,14 @@ export function ChatContainer() {
                     media: { src: videoUrl, type: "video" },
                     sender: "bot",
                     timestamp: new Date(),
+                    thinking:
+                        thinkingDescription || thinkingGroq
+                            ? {
+                                  description: thinkingDescription,
+                                  groqOutput: thinkingGroq,
+                                  collapsed: true,
+                              }
+                            : undefined,
                 };
                 setMessages((prev) => [...prev, botMessage]);
             } else if (data?.taskId) {
@@ -154,8 +263,25 @@ export function ChatContainer() {
                     text: "Đang tạo video — quá trình có thể mất khoảng 30–60 giây. Vui lòng chờ trong giây lát.",
                     sender: "bot",
                     timestamp: new Date(),
+                    thinking:
+                        thinkingDescription || thinkingGroq
+                            ? {
+                                  // Do NOT expose full description/groqOutput here to avoid briefly flashing full text.
+                                  // The streamer will reveal visible fragments over time.
+                                  collapsed: false,
+                              }
+                            : undefined,
                 };
                 setMessages((prev) => [...prev, processingMessage]);
+
+                // Start fake streaming for thinking content if present
+                if (processingMessage.thinking) {
+                    startFakeThinkingStream(
+                        tempId,
+                        thinkingDescription,
+                        thinkingGroq
+                    );
+                }
 
                 // Start polling in background
                 (async () => {
@@ -176,25 +302,137 @@ export function ChatContainer() {
                                 continue;
                             }
                             const statusData = await statusRes.json();
+                            console.debug(
+                                "/api/generate/status returned",
+                                statusData
+                            );
+                            // Robust extraction of resultUrls from several response shapes
+                            function extractResultUrls(
+                                obj: any
+                            ): string[] | undefined {
+                                if (!obj) return undefined;
+                                if (
+                                    Array.isArray(obj.resultUrls) &&
+                                    obj.resultUrls.length
+                                )
+                                    return obj.resultUrls;
+                                try {
+                                    const rj = obj?.raw?.data?.resultJson;
+                                    if (rj) {
+                                        const parsed =
+                                            typeof rj === "string"
+                                                ? JSON.parse(rj)
+                                                : rj;
+                                        if (
+                                            Array.isArray(parsed?.resultUrls) &&
+                                            parsed.resultUrls.length
+                                        )
+                                            return parsed.resultUrls;
+                                    }
+                                } catch (e) {
+                                    // ignore
+                                }
+                                if (
+                                    Array.isArray(obj?.raw?.resultUrls) &&
+                                    obj.raw.resultUrls.length
+                                )
+                                    return obj.raw.resultUrls;
+                                if (
+                                    Array.isArray(obj?.data?.resultUrls) &&
+                                    obj.data.resultUrls.length
+                                )
+                                    return obj.data.resultUrls;
+                                return undefined;
+                            }
+
+                            const resultUrls = extractResultUrls(statusData);
+
+                            // If provider reports a failure, surface the fail message to the user and stop polling
+                            if (statusData?.state === "fail") {
+                                const failMsg =
+                                    statusData?.raw?.data?.failMsg ||
+                                    statusData?.failMsg ||
+                                    statusData?.raw?.failMsg ||
+                                    "Quá trình tạo thất bại.";
+
+                                const failMessage: Message = {
+                                    id: (Date.now() + 2).toString(),
+                                    text: `Lỗi: ${failMsg}`,
+                                    sender: "bot",
+                                    timestamp: new Date(),
+                                };
+
+                                // Clear any fake-stream timer for this processing message
+                                const t = streamTimersRef.current.get(tempId);
+                                if (t) {
+                                    clearInterval(t);
+                                    streamTimersRef.current.delete(tempId);
+                                }
+
+                                // Replace processing message with failure message (append if not found)
+                                setMessages((prev) => {
+                                    const found = prev.some(
+                                        (m) => m.id === tempId
+                                    );
+                                    if (found)
+                                        return prev.map((m) =>
+                                            m.id === tempId ? failMessage : m
+                                        );
+                                    return [...prev, failMessage];
+                                });
+                                return;
+                            }
+
                             if (
                                 statusData?.state === "success" &&
-                                Array.isArray(statusData.resultUrls) &&
-                                statusData.resultUrls.length > 0
+                                Array.isArray(resultUrls) &&
+                                resultUrls.length > 0
                             ) {
-                                const videoUrl = statusData.resultUrls[0];
+                                const videoUrl = resultUrls[0];
                                 const finishedMessage: Message = {
                                     id: (Date.now() + 2).toString(),
                                     text: "Video đã tạo xong",
                                     media: { src: videoUrl, type: "video" },
                                     sender: "bot",
                                     timestamp: new Date(),
+                                    thinking:
+                                        statusData?.geminiDescription ||
+                                        statusData?.groqOutput
+                                            ? {
+                                                  description:
+                                                      statusData?.geminiDescription,
+                                                  groqOutput:
+                                                      statusData?.groqOutput,
+                                                  visibleDescription:
+                                                      statusData?.geminiDescription,
+                                                  visibleGroq:
+                                                      statusData?.groqOutput,
+                                                  // collapse thinking when finished
+                                                  collapsed: true,
+                                              }
+                                            : undefined,
                                 };
-                                // Replace processing message with result
-                                setMessages((prev) =>
-                                    prev.map((m) =>
-                                        m.id === tempId ? finishedMessage : m
-                                    )
-                                );
+
+                                // Clear any fake-stream timer for this processing message
+                                const t = streamTimersRef.current.get(tempId);
+                                if (t) {
+                                    clearInterval(t);
+                                    streamTimersRef.current.delete(tempId);
+                                }
+
+                                // Replace processing message with result (preserve thinking collapsed) or append if processing message was not found
+                                setMessages((prev) => {
+                                    const found = prev.some(
+                                        (m) => m.id === tempId
+                                    );
+                                    if (found)
+                                        return prev.map((m) =>
+                                            m.id === tempId
+                                                ? finishedMessage
+                                                : m
+                                        );
+                                    return [...prev, finishedMessage];
+                                });
                                 return;
                             }
                         } catch (err) {
@@ -403,10 +641,85 @@ export function ChatContainer() {
                                             </p>
                                         </div>
                                     )}
+                                    {message.thinking && (
+                                        <div className="mb-2 border rounded px-3 py-2 bg-muted/5">
+                                            <div className="flex items-center justify-between">
+                                                <div className="text-sm font-medium">
+                                                    Đang suy nghĩ...
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        toggleThinking(
+                                                            message.id
+                                                        )
+                                                    }
+                                                    className="text-xs text-primary/90"
+                                                >
+                                                    {message.thinking.collapsed
+                                                        ? "Hiện"
+                                                        : "Ẩn"}
+                                                </button>
+                                            </div>
+                                            {!message.thinking.collapsed && (
+                                                <div className="mt-2 text-sm text-muted-foreground space-y-2">
+                                                    {(message.thinking
+                                                        .visibleDescription ??
+                                                        message.thinking
+                                                            .description) && (
+                                                        <div>
+                                                            <div className="font-semibold text-xs">
+                                                                Tôi sẽ phân tích
+                                                                bức ảnh trước
+                                                                tiên
+                                                            </div>
+                                                            <div className="whitespace-pre-wrap">
+                                                                {"Trên hình ảnh là " +
+                                                                    (message
+                                                                        .thinking
+                                                                        .visibleDescription ??
+                                                                        message
+                                                                            .thinking
+                                                                            .description)}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {(message.thinking
+                                                        .visibleGroq !==
+                                                        undefined ||
+                                                        (message.thinking
+                                                            .collapsed &&
+                                                            message.thinking
+                                                                .groqOutput)) && (
+                                                        <div>
+                                                            <div className="font-semibold text-xs">
+                                                                Gợi ý hành động
+                                                                tiếp theo
+                                                            </div>
+                                                            <div className="whitespace-pre-wrap">
+                                                                {message
+                                                                    .thinking
+                                                                    .visibleGroq !==
+                                                                undefined
+                                                                    ? message
+                                                                          .thinking
+                                                                          .visibleGroq
+                                                                    : message
+                                                                          .thinking
+                                                                          .groqOutput}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
                                     {message.media &&
                                         message.media.type === "video" && (
                                             <div className="mb-2">
                                                 <video
+                                                    key={message.media.src}
                                                     src={message.media.src}
                                                     controls
                                                     className="rounded max-w-[200px] h-auto"

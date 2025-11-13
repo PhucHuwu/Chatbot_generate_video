@@ -57,11 +57,19 @@ export async function describeImageWithGemini(imageUrl: string) {
         resp = await callModel("gemini-2.5-flash");
     } catch (err: any) {
         const msg = String(err?.message || err);
-        if (msg.includes("503") || /unavailab|overload/i.test(msg)) {
+        // If overloaded or unavailable, or rate-limited (429), wait a bit then retry with a lighter model
+        if (
+            msg.includes("503") ||
+            /unavailab|overload/i.test(msg) ||
+            msg.includes("429") ||
+            /TooManyRequests/i.test(msg)
+        ) {
             console.warn(
-                "Gemini model overloaded; retrying with gemini-2.0-flash-lite",
+                "Gemini model overloaded or rate-limited; waiting 3s then retrying with gemini-2.0-flash-lite",
                 msg
             );
+            // small delay before fallback to avoid rapid 429 responses
+            await new Promise((r) => setTimeout(r, 3000));
             try {
                 resp = await callModel("gemini-2.0-flash-lite");
             } catch (err2: any) {
