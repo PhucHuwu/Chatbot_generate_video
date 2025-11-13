@@ -437,18 +437,36 @@ export function ChatContainer() {
                             }
 
                             // If provider reports a failure, surface the fail message to the user and stop polling
-                            if (statusData?.state === "fail") {
+                            if (
+                                statusData?.state === "fail" ||
+                                statusData?.state === "failed"
+                            ) {
                                 const failMsg =
                                     statusData?.raw?.data?.failMsg ||
                                     statusData?.failMsg ||
                                     statusData?.raw?.failMsg ||
-                                    "Quá trình tạo thất bại.";
+                                    "Quá trình tạo video thất bại. Vui lòng thử lại với mô tả khác.";
 
                                 const failMessage: Message = {
                                     id: (Date.now() + 2).toString(),
                                     text: `Lỗi: ${failMsg}`,
                                     sender: "bot",
                                     timestamp: new Date(),
+                                    thinking:
+                                        statusData?.geminiDescription ||
+                                        statusData?.groqOutput
+                                            ? {
+                                                  description:
+                                                      statusData?.geminiDescription,
+                                                  groqOutput:
+                                                      statusData?.groqOutput,
+                                                  visibleDescription:
+                                                      statusData?.geminiDescription,
+                                                  visibleGroq:
+                                                      statusData?.groqOutput,
+                                                  collapsed: true,
+                                              }
+                                            : undefined,
                                 };
 
                                 // Clear any fake-stream timer for this processing message
@@ -482,13 +500,13 @@ export function ChatContainer() {
                     setMessages((prev) =>
                         prev.map((m) =>
                             m.id === tempId
-                                        ? {
-                                              ...m,
-                                              text: "Quá trình tạo video đang mất nhiều thời gian hơn dự kiến. Đang tiếp tục kiểm tra. Vui lòng không đóng hay tải lại trang này",
-                                              // Store taskId in a custom field for manual retry
-                                              taskId: data.taskId,
-                                              processing: true,
-                                          }
+                                ? {
+                                      ...m,
+                                      text: "Quá trình tạo video đang mất nhiều thời gian hơn dự kiến. Đang tiếp tục kiểm tra. Vui lòng không đóng hay tải lại trang này",
+                                      // Store taskId in a custom field for manual retry
+                                      taskId: data.taskId,
+                                      processing: true,
+                                  }
                                 : m
                         )
                     );
@@ -577,12 +595,15 @@ export function ChatContainer() {
                                 return;
                             }
 
-                            if (statusData?.state === "fail") {
+                            if (
+                                statusData?.state === "fail" ||
+                                statusData?.state === "failed"
+                            ) {
                                 const failMsg =
                                     statusData?.raw?.data?.failMsg ||
                                     statusData?.failMsg ||
                                     statusData?.raw?.failMsg ||
-                                    "Quá trình tạo thất bại.";
+                                    "Quá trình tạo video thất bại. Vui lòng thử lại với mô tả khác.";
 
                                 const failMessage: Message = {
                                     id: (Date.now() + 2).toString(),
@@ -790,7 +811,9 @@ export function ChatContainer() {
                                         >
                                             <p className="break-words">
                                                 {message.text}
-                                                {message.processing && <AnimatedEllipsis />}
+                                                {message.processing && (
+                                                    <AnimatedEllipsis />
+                                                )}
                                             </p>
                                             <p className="text-xs mt-1 opacity-70">
                                                 {message.timestamp.toLocaleTimeString(
@@ -922,7 +945,9 @@ export function ChatContainer() {
                                     {message.text && (
                                         <p className="break-words">
                                             {message.text}
-                                            {message.processing && <AnimatedEllipsis />}
+                                            {message.processing && (
+                                                <AnimatedEllipsis />
+                                            )}
                                         </p>
                                     )}
                                     <p className="text-xs mt-1 opacity-70">

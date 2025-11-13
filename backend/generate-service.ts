@@ -216,7 +216,7 @@ export async function generateMedia(
         );
     }
 
-    // Poll
+    // Poll with initial fast interval
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
         const info = await getRecordInfo(taskId);
         const state = info?.data?.state;
@@ -244,7 +244,7 @@ export async function generateMedia(
             };
         }
 
-        if (state === "fail") {
+        if (state === "fail" || state === "failed") {
             return {
                 taskId,
                 state: "fail",
@@ -258,11 +258,64 @@ export async function generateMedia(
         await new Promise((r) => setTimeout(r, pollIntervalMs));
     }
 
-    // timed out
+    // Fast polling timeout - switch to extended polling with longer interval
+    // Poll thêm 20 lần với interval 5s (tổng thêm ~100s) để đảm bảo lấy được kết quả cuối cùng
+    console.log(
+        `Task ${taskId}: Fast polling timeout, switching to extended polling...`
+    );
+    const extendedPollInterval = 5000; // 5 giây
+    const extendedMaxAttempts = 20; // thêm 20 lần nữa
+
+    for (let attempt = 0; attempt < extendedMaxAttempts; attempt++) {
+        await new Promise((r) => setTimeout(r, extendedPollInterval));
+
+        const info = await getRecordInfo(taskId).catch(() => null);
+        const state = info?.data?.state;
+
+        if (state === "success") {
+            let resultJson = info?.data?.resultJson;
+            let resultUrls: string[] | undefined;
+            try {
+                if (typeof resultJson === "string") {
+                    const parsed = JSON.parse(resultJson);
+                    resultUrls = parsed?.resultUrls;
+                } else if (typeof resultJson === "object") {
+                    resultUrls = resultJson?.resultUrls;
+                }
+            } catch (e) {
+                // ignore parse error
+            }
+
+            return {
+                taskId,
+                state: "success",
+                resultUrls,
+                raw: info,
+                geminiDescription,
+                groqOutput,
+            };
+        }
+
+        if (state === "fail" || state === "failed") {
+            return {
+                taskId,
+                state: "fail",
+                raw: info,
+                geminiDescription,
+                groqOutput,
+            };
+        }
+    }
+
+    // Sau extended polling vẫn chưa xong -> trả về fail với message rõ ràng
+    console.error(
+        `Task ${taskId}: Extended polling timeout - task không hoàn thành sau ~160s`
+    );
     const lastInfo = await getRecordInfo(taskId).catch(() => null);
     return {
         taskId,
-        state: lastInfo?.data?.state ?? "waiting",
+        state: "fail",
+        resultUrls: undefined,
         raw: lastInfo,
         geminiDescription,
         groqOutput,
