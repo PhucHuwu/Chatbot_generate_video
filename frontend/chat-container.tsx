@@ -14,6 +14,10 @@ interface Message {
         fileName: string;
         size: number;
     };
+    media?: {
+        src: string;
+        type: "video" | "image" | "unknown";
+    };
     sender: "user" | "bot";
     timestamp: Date;
 }
@@ -50,32 +54,137 @@ export function ChatContainer() {
         setIsLoading(true);
 
         try {
-            const response = await fetch("/api/chat", {
+            // Call our backend generate endpoint which handles the external API and polling
+            const response = await fetch("/api/generate", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ message: input }),
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ prompt: input }),
             });
 
             if (!response.ok) {
-                throw new Error("Failed to get response from bot");
+                const text = await response.text().catch(() => "");
+                throw new Error(`Generate failed: ${response.status} ${text}`);
             }
 
             const data = await response.json();
 
-            // Bot message from API response
-            const botMessage: Message = {
-                id: (Date.now() + 1).toString(),
-                text: data.message,
-                sender: "bot",
-                timestamp: new Date(data.timestamp),
-            };
+            // If the server already returned resultUrls, show immediately
+            if (
+                data?.state === "success" &&
+                Array.isArray(data.resultUrls) &&
+                data.resultUrls.length > 0
+            ) {
+                const videoUrl = data.resultUrls[0];
+                const botMessage: Message = {
+                    id: (Date.now() + 1).toString(),
+                    text: "Video đã tạo xong",
+                    media: { src: videoUrl, type: "video" },
+                    sender: "bot",
+                    timestamp: new Date(),
+                };
+                setMessages((prev) => [...prev, botMessage]);
+            } else if (
+                Array.isArray(data?.resultUrls) &&
+                data.resultUrls.length > 0
+            ) {
+                // Some backends may return resultUrls without state
+                const videoUrl = data.resultUrls[0];
+                const botMessage: Message = {
+                    id: (Date.now() + 1).toString(),
+                    text: "Video đã tạo xong",
+                    media: { src: videoUrl, type: "video" },
+                    sender: "bot",
+                    timestamp: new Date(),
+                };
+                setMessages((prev) => [...prev, botMessage]);
+            } else if (data?.taskId) {
+                // Show a temporary processing message, and start client-side polling for status
+                const tempId = (Date.now() + 1).toString();
+                const processingMessage: Message = {
+                    id: tempId,
+                    text: `Tác vụ đang xử lý (taskId: ${data.taskId})...`,
+                    sender: "bot",
+                    timestamp: new Date(),
+                };
+                setMessages((prev) => [...prev, processingMessage]);
 
-            setMessages((prev) => [...prev, botMessage]);
+                // Start polling in background
+                (async () => {
+                    const maxChecks = 30; // up to ~60s with 2s interval
+                    const intervalMs = 2000;
+                    for (let i = 0; i < maxChecks; i++) {
+                        try {
+                            const statusRes = await fetch(
+                                `/api/generate/status?taskId=${encodeURIComponent(
+                                    data.taskId
+                                )}`
+                            );
+                            if (!statusRes.ok) {
+                                // if server returns 4xx/5xx, break or continue depending on needs; here we'll continue
+                                await new Promise((r) =>
+                                    setTimeout(r, intervalMs)
+                                );
+                                continue;
+                            }
+                            const statusData = await statusRes.json();
+                            if (
+                                statusData?.state === "success" &&
+                                Array.isArray(statusData.resultUrls) &&
+                                statusData.resultUrls.length > 0
+                            ) {
+                                const videoUrl = statusData.resultUrls[0];
+                                const finishedMessage: Message = {
+                                    id: (Date.now() + 2).toString(),
+                                    text: "Video đã tạo xong",
+                                    media: { src: videoUrl, type: "video" },
+                                    sender: "bot",
+                                    timestamp: new Date(),
+                                };
+                                // Replace processing message with result
+                                setMessages((prev) =>
+                                    prev.map((m) =>
+                                        m.id === tempId ? finishedMessage : m
+                                    )
+                                );
+                                return;
+                            }
+                        } catch (err) {
+                            // ignore and retry
+                        }
+                        await new Promise((r) => setTimeout(r, intervalMs));
+                    }
+
+                    // If we reach here, timed out — update message to indicate waiting
+                    setMessages((prev) =>
+                        prev.map((m) =>
+                            m.id === tempId
+                                ? {
+                                      ...m,
+                                      text: `Tác vụ vẫn đang xử lý (taskId: ${data.taskId}). Hãy kiểm tra lại sau.`,
+                                  }
+                                : m
+                        )
+                    );
+                })();
+            } else if (data?.error) {
+                const botMessage: Message = {
+                    id: (Date.now() + 1).toString(),
+                    text: `Lỗi: ${data.error}`,
+                    sender: "bot",
+                    timestamp: new Date(),
+                };
+                setMessages((prev) => [...prev, botMessage]);
+            } else {
+                const botMessage: Message = {
+                    id: (Date.now() + 1).toString(),
+                    text: "Không có kết quả trả về",
+                    sender: "bot",
+                    timestamp: new Date(),
+                };
+                setMessages((prev) => [...prev, botMessage]);
+            }
         } catch (error) {
             console.error("Error sending message:", error);
-            // Hiển thị thông báo lỗi (tiếng Việt)
             const errorMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 text: "Lỗi: Không nhận được phản hồi từ dịch vụ.",
@@ -248,6 +357,19 @@ export function ChatContainer() {
                                         </p>
                                     </div>
                                 )}
+                                {message.media &&
+                                    message.media.type === "video" && (
+                                        <div className="mb-2">
+                                            <video
+                                                src={message.media.src}
+                                                controls
+                                                className="rounded max-w-full h-auto"
+                                            />
+                                            <p className="text-xs mt-1 opacity-70">
+                                                Video kết quả
+                                            </p>
+                                        </div>
+                                    )}
                                 {message.text && (
                                     <p className="break-words">
                                         {message.text}
