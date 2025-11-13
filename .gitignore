@@ -1,0 +1,48 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Next.js build output
+.next/
+out/
+dist/
+
+# Production
+/build
+
+# macOS
+.DS_Store
+
+# Environment variables
+.env.local
+.env.*.local
+
+# Logs
+logs
+*.log
+
+# VS Code
+.vscode/
+
+# JetBrains
+.idea/
+
+# TypeScript
+*.tsbuildinfo
+
+# Coverage
+coverage/
+
+# Misc caches
+.cache/
+.parcel-cache/
+.eslintcache
+
+# pnpm store (if accidentally added)
+.pnpm-store/
+
+# Ignore local OS/editor files
+Thumbs.db
