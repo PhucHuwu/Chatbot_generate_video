@@ -8,8 +8,8 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Chat Bot Generate Video",
-  description: "Chat Bot Generate Video",
+  title: "Chatbot tạo video từ ảnh",
+  description: "Chatbot tạo video từ ảnh và mô tả văn bản (prompt). Nhập mô tả để tạo video tự động.",
   icons: {
     icon: [
       {
@@ -35,7 +35,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="vi" className="dark">
       <body className={`font-sans antialiased`}>
         {children}
         <Analytics />

@@ -69,10 +69,10 @@ export function ChatContainer() {
       setMessages((prev) => [...prev, botMessage])
     } catch (error) {
       console.error("Error sending message:", error)
-      // Show error message
+      // Hiển thị thông báo lỗi (tiếng Việt)
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: "Error: Could not get response from bot",
+        text: "Lỗi: Không nhận được phản hồi từ dịch vụ.",
         sender: "bot",
         timestamp: new Date(),
       }
@@ -87,8 +87,8 @@ export function ChatContainer() {
       {/* Header */}
       <header className="border-b border-border bg-card p-4">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-2xl font-bold text-foreground">Chat Bot</h1>
-          <p className="text-sm text-muted-foreground">Test Mode - Echo Response</p>
+          <h1 className="text-2xl font-bold text-foreground">Chatbot tạo video</h1>
+          <p className="text-sm text-muted-foreground">Tạo video từ mô tả văn bản và ảnh</p>
         </div>
       </header>
 
@@ -98,8 +98,8 @@ export function ChatContainer() {
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full pt-20 text-center">
               <div className="text-muted-foreground space-y-2">
-                <p className="text-lg font-medium">Welcome to Chat Bot</p>
-                <p className="text-sm">Start typing to begin the conversation</p>
+                <p className="text-lg font-medium">Chào mừng đến với Chatbot tạo video</p>
+                <p className="text-sm">Nhập mô tả (prompt) để bắt đầu tạo video</p>
               </div>
             </div>
           )}
@@ -146,7 +146,7 @@ export function ChatContainer() {
           <form onSubmit={handleSendMessage} className="flex gap-2">
             <Input
               type="text"
-              placeholder="Type your message..."
+              placeholder="Nhập mô tả (prompt) của bạn..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
               disabled={isLoading}
