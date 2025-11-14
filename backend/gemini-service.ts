@@ -65,13 +65,13 @@ export async function describeImageWithGemini(imageUrl: string) {
             /TooManyRequests/i.test(msg)
         ) {
             console.warn(
-                "Gemini model overloaded or rate-limited; waiting 3s then retrying with gemini-2.0-flash-lite",
+                "Gemini model overloaded or rate-limited; waiting 3s then retrying with gemini-2.5-flash-lite",
                 msg
             );
             // small delay before fallback to avoid rapid 429 responses
             await new Promise((r) => setTimeout(r, 3000));
             try {
-                resp = await callModel("gemini-2.0-flash-lite");
+                resp = await callModel("gemini-2.5-flash-lite");
             } catch (err2: any) {
                 const combined = new Error(
                     `Gemini describe failed (primary and fallback): ${msg}; ${String(
