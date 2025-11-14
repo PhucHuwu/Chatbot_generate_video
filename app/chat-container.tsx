@@ -1102,7 +1102,7 @@ export function ChatContainer() {
                             type="button"
                             disabled={isLoading || isProcessing}
                             size="icon"
-                            className="bg-secondary hover:bg-secondary/90"
+                            className="bg-muted-foreground hover:bg-muted-foreground/90"
                             onClick={() => fileInputRef.current?.click()}
                         >
                             <Upload className="w-4 h-4" />
