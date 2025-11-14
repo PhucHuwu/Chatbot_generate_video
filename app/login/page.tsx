@@ -23,7 +23,7 @@ export default function LoginPage() {
             });
 
             if (res.ok) {
-                // On success, navigate to the home page (or change as desired)
+                // backend sets an HTTP-only cookie; frontend only redirects
                 router.push("/");
             } else {
                 const data = await res.json();
@@ -37,28 +37,34 @@ export default function LoginPage() {
     }
 
     return (
-        <main className="min-h-screen flex items-center justify-center bg-white">
-            <div className="w-full max-w-md p-8 border rounded-lg shadow-sm">
-                <h1 className="text-2xl mb-4">Login</h1>
+        <main className="min-h-screen flex items-center justify-center bg-background">
+            <div className="w-full max-w-md p-8 border border-border bg-card rounded-lg shadow-sm">
+                <h1 className="text-2xl font-bold text-foreground mb-4">
+                    Đăng nhập
+                </h1>
                 <form onSubmit={handleSubmit}>
                     <label className="block mb-2">
-                        <span className="text-sm">Username</span>
+                        <span className="text-sm text-muted-foreground">
+                            Tên đăng nhập
+                        </span>
                         <input
                             type="text"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
-                            className="mt-1 block w-full border px-3 py-2 rounded"
+                            className="mt-1 block w-full border border-border px-3 py-2 rounded bg-transparent text-foreground"
                             required
                         />
                     </label>
 
                     <label className="block mb-4">
-                        <span className="text-sm">Password</span>
+                        <span className="text-sm text-muted-foreground">
+                            Mật khẩu
+                        </span>
                         <input
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="mt-1 block w-full border px-3 py-2 rounded"
+                            className="mt-1 block w-full border border-border px-3 py-2 rounded bg-transparent text-foreground"
                             required
                         />
                     </label>
@@ -67,16 +73,12 @@ export default function LoginPage() {
 
                     <button
                         type="submit"
-                        className="w-full bg-blue-600 text-white px-4 py-2 rounded"
+                        className="w-full bg-primary text-primary-foreground px-4 py-2 rounded"
                         disabled={loading}
                     >
-                        {loading ? "Signing in..." : "Sign in"}
+                        {loading ? "Đang đăng nhập..." : "Đăng nhập"}
                     </button>
                 </form>
-                <p className="mt-4 text-sm text-muted-foreground">
-                    Use the credentials set in your `.ENV` (LOGIN_USER /
-                    LOGIN_PASS).
-                </p>
             </div>
         </main>
     );

@@ -15,7 +15,22 @@ export async function POST(request: Request) {
         const envPass = process.env.LOGIN_PASS ?? "";
 
         if (username === envUser && password === envPass) {
-            return NextResponse.json({ ok: true });
+            // On success, set an HTTP-only cookie containing the login timestamp.
+            const res = NextResponse.json({ ok: true });
+            try {
+                const ts = Date.now().toString();
+                // set cookie for 4 hours
+                res.cookies.set("auth_ts", ts, {
+                    httpOnly: true,
+                    maxAge: 4 * 60 * 60, // 4 hours in seconds
+                    path: "/",
+                    sameSite: "lax",
+                    secure: process.env.NODE_ENV === "production",
+                });
+            } catch (e) {
+                // ignore cookie errors, still return success
+            }
+            return res;
         }
 
         return NextResponse.json(

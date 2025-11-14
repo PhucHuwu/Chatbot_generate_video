@@ -2,9 +2,11 @@
 
 import type React from "react";
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Upload } from "lucide-react";
+import { Send, Upload, Sun, Moon } from "lucide-react";
+import { useTheme } from "@/components/theme-toggle-provider";
 
 interface Message {
     id: string;
@@ -52,6 +54,21 @@ function AnimatedEllipsis({ interval = 400 }: { interval?: number }) {
 }
 
 export function ChatContainer() {
+    const router = useRouter();
+    const { theme, toggleTheme } = useTheme();
+    // Check authentication with the backend; frontend only calls the API
+    useEffect(() => {
+        (async () => {
+            try {
+                const res = await fetch("/api/auth");
+                if (!res.ok) {
+                    router.replace("/login");
+                }
+            } catch (e) {
+                router.replace("/login");
+            }
+        })();
+    }, [router]);
     const [messages, setMessages] = useState<Message[]>([]);
     const STORAGE_KEY = "chat_history_v1";
     const [isProcessing, setIsProcessing] = useState(false);
@@ -743,13 +760,57 @@ export function ChatContainer() {
         <div className="flex flex-col h-screen bg-background">
             {/* Header */}
             <header className="border-b border-border bg-card p-4">
-                <div className="max-w-4xl mx-auto">
-                    <h1 className="text-2xl font-bold text-foreground">
-                        Chatbot tạo video
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        Tạo video từ mô tả văn bản và ảnh
-                    </p>
+                <div className="max-w-4xl mx-auto flex items-center justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold text-foreground">
+                            Chatbot tạo video
+                        </h1>
+                        <p className="text-sm text-muted-foreground">
+                            Tạo video từ mô tả văn bản và ảnh
+                        </p>
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={toggleTheme}
+                                title={
+                                    theme === "light"
+                                        ? "Chuyển sang chế độ tối"
+                                        : "Chuyển sang chế độ sáng"
+                                }
+                            >
+                                {theme === "light" ? (
+                                    <Moon className="h-4 w-4" />
+                                ) : (
+                                    <Sun className="h-4 w-4" />
+                                )}
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={async () => {
+                                    try {
+                                        await fetch("/api/logout", {
+                                            method: "POST",
+                                        });
+                                    } catch (e) {
+                                        // ignore errors
+                                    } finally {
+                                        try {
+                                            localStorage.removeItem(
+                                                "chat_history_v1"
+                                            );
+                                        } catch (e) {}
+                                        router.replace("/login");
+                                    }
+                                }}
+                            >
+                                Đăng xuất
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             </header>
 
