@@ -5,8 +5,9 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Upload, Sun, Moon, Settings } from "lucide-react";
+import { Send, Upload, Sun, Moon, Settings, Trash } from "lucide-react";
 import { useTheme } from "@/components/theme-toggle-provider";
+import NativeConfirm from "@/components/ui/native-confirm";
 
 interface Message {
     id: string;
@@ -800,13 +801,10 @@ export function ChatContainer() {
         }
     };
 
-    // Clear chat history (state + localStorage) with confirmation
-    const clearHistory = () => {
-        const ok = window.confirm(
-            "Bạn có chắc muốn xóa toàn bộ lịch sử chat? Hành động này không thể hoàn tác."
-        );
-        if (!ok) return;
+    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
+    // Perform the actual clearing of chat history (no confirmation here)
+    const doClearHistory = () => {
         // Clear any running stream timers
         streamTimersRef.current.forEach((t) => clearInterval(t));
         streamTimersRef.current.clear();
@@ -819,6 +817,12 @@ export function ChatContainer() {
         }
         // After clearing, we need to allow saving again
         setHasLoadedHistory(true);
+        setIsConfirmOpen(false);
+    };
+
+    // Open the confirmation dialog (replaces native window.confirm)
+    const clearHistory = () => {
+        setIsConfirmOpen(true);
     };
 
     return (
@@ -859,6 +863,19 @@ export function ChatContainer() {
                                 title="Cài đặt API Keys"
                             >
                                 <Settings className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={clearHistory}
+                                disabled={
+                                    messages.length === 0 ||
+                                    isLoading ||
+                                    isProcessing
+                                }
+                                title="Xóa lịch sử chat"
+                            >
+                                <Trash className="h-4 w-4" />
                             </Button>
                             <Button
                                 size="sm"
@@ -1112,20 +1129,7 @@ export function ChatContainer() {
             {/* Input Area */}
             <footer className="border-t border-border bg-card p-4">
                 <div className="max-w-4xl mx-auto">
-                    <div className="flex justify-end mb-2">
-                        <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={clearHistory}
-                            disabled={
-                                messages.length === 0 ||
-                                isLoading ||
-                                isProcessing
-                            }
-                        >
-                            Xóa lịch sử
-                        </Button>
-                    </div>
+                    {/* delete button moved to header next to theme toggle */}
                     {/* Uploaded image preview shown above input (not as a sent message) */}
                     {uploadedImage && (
                         <div className="mb-2 flex items-center gap-3">
@@ -1315,6 +1319,17 @@ export function ChatContainer() {
                                 </div>
                             </div>
                         </div>
+                    )}
+                    {isConfirmOpen && (
+                        <NativeConfirm
+                            open={isConfirmOpen}
+                            title="Xóa lịch sử chat"
+                            description="Bạn có chắc muốn xóa toàn bộ lịch sử chat? Hành động này không thể hoàn tác."
+                            confirmLabel="Xóa"
+                            cancelLabel="Hủy"
+                            onConfirm={doClearHistory}
+                            onCancel={() => setIsConfirmOpen(false)}
+                        />
                     )}
                 </div>
             </footer>
