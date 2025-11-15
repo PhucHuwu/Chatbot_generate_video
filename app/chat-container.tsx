@@ -1310,6 +1310,7 @@ export function ChatContainer() {
                                         ? "Vui lòng upload ảnh trước khi sinh prompt"
                                         : "Sinh prompt từ ảnh"
                                 }
+                                className="bg-gradient-to-r from-[#8AB4F8] via-[#C58AF9] to-[#F48FB1] text-white hover:opacity-90 disabled:opacity-50"
                             >
                                 <span className="sr-only">Gen Prompt</span>
                                 <Sparkles className="w-4 h-4" aria-hidden />
