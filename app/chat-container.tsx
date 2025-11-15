@@ -1252,7 +1252,14 @@ export function ChatContainer() {
                                     setIsLoading(false);
                                 }
                             }}
-                            disabled={isLoading || isProcessing}
+                            disabled={
+                                isLoading || isProcessing || !uploadedImage
+                            }
+                            title={
+                                !uploadedImage
+                                    ? "Vui lòng upload ảnh trước khi sinh prompt"
+                                    : "Sinh prompt từ ảnh"
+                            }
                         >
                             <span className="sr-only">Gen Prompt</span>
                             <Sparkles className="w-4 h-4" aria-hidden />
@@ -1302,7 +1309,7 @@ export function ChatContainer() {
                                 }
                             }}
                             disabled={isLoading || isProcessing}
-                            className="flex-1 resize-none overflow-hidden rounded border border-border px-3 py-2 bg-transparent focus:outline-none"
+                            className="flex-1 resize-none overflow-hidden rounded-md border border-border px-3 py-2 bg-transparent focus:outline-none"
                         />
 
                         <Button
