@@ -61,6 +61,16 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Reject text-only requests: service requires an image (image_url or imageBase64).
+        if (!image_url) {
+            return NextResponse.json(
+                {
+                    error: "Dịch vụ chỉ hỗ trợ tạo video từ ảnh hoặc ảnh+kèm prompt. Trường hợp chỉ nhập prompt không được hỗ trợ.",
+                },
+                { status: 400 }
+            );
+        }
+
         // Now read prompt after handling image upload so we can support image-only requests
         let prompt = String(body?.prompt || "").trim();
 

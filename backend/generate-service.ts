@@ -111,6 +111,13 @@ export async function generateMedia(
         throw new Error("KIE_API_KEY not configured on server");
     }
 
+    // New: disallow text-only generation. Service requires an image_url (or an uploaded image converted to a public URL).
+    if (!input.image_url) {
+        throw new Error(
+            "Dịch vụ chỉ hỗ trợ tạo video từ ảnh hoặc ảnh+kèm prompt. Trường hợp chỉ nhập prompt không được hỗ trợ."
+        );
+    }
+
     // Defensive check: KIE only accepts https image URLs. Reject non-https inputs early.
     if (input.image_url && !/^https:\/\//i.test(input.image_url)) {
         throw new Error(

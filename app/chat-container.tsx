@@ -242,9 +242,9 @@ export function ChatContainer() {
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!input.trim() && !uploadedImage) {
-            // Require prompt before sending unless an image is attached
-            alert("Vui lòng nhập prompt để tạo video hoặc chọn một ảnh.");
+        // Require an image for all requests; disallow prompt-only submissions
+        if (!uploadedImage) {
+            alert("Vui lòng chọn ảnh (bắt buộc). Trường hợp chỉ nhập prompt không được hỗ trợ.");
             return;
         }
 
@@ -272,10 +272,9 @@ export function ChatContainer() {
         try {
             // Call our backend generate endpoint which handles the external API and polling
             const body: any = { prompt: input };
-            if (uploadedImage) {
-                body.imageBase64 = uploadedImage.src;
-                body.fileName = uploadedImage.fileName;
-            }
+            // uploadedImage guaranteed by validation above
+            body.imageBase64 = uploadedImage.src;
+            body.fileName = uploadedImage.fileName;
             // Include optional API key overrides from settings (if set)
             if (settings.googleApiKey)
                 body.googleApiKey = settings.googleApiKey;
@@ -1118,7 +1117,7 @@ export function ChatContainer() {
                     <form onSubmit={handleSendMessage} className="flex gap-2">
                         <Input
                             type="text"
-                            placeholder="Nhập mô tả của bạn..."
+                            placeholder="Nhập mô tả (bắt buộc kèm ảnh)..."
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             disabled={isLoading || isProcessing}
@@ -1143,11 +1142,7 @@ export function ChatContainer() {
                         />
                         <Button
                             type="submit"
-                            disabled={
-                                isLoading ||
-                                isProcessing ||
-                                (!input.trim() && !uploadedImage)
-                            }
+                            disabled={isLoading || isProcessing || !uploadedImage}
                             size="icon"
                             className="bg-primary hover:bg-primary/90"
                         >
