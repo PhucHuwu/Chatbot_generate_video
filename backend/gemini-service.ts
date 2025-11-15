@@ -70,7 +70,8 @@ export async function describeImageWithGemini(
             msg.includes("503") ||
             /unavailab|overload/i.test(msg) ||
             msg.includes("429") ||
-            /TooManyRequests/i.test(msg)
+            /TooManyRequests/i.test(msg) ||
+            msg.includes("500")
         ) {
             console.warn(
                 "Gemini model overloaded or rate-limited; waiting 3s then retrying with OpenRouter fallback",

@@ -31,9 +31,6 @@ interface Message {
         groqOutput?: string;
         // whether the thinking block is collapsed (hidden) in the UI
         collapsed?: boolean;
-        // visible (streamed) fragments
-        visibleDescription?: string;
-        visibleGroq?: string;
     };
     media?: {
         src: string;
@@ -99,12 +96,13 @@ export function ChatContainer() {
         groqApiKey?: string;
     }>({});
     const [isLoading, setIsLoading] = useState(false);
+    const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     // maximum height in pixels for the prompt textarea before internal scrolling
     const TEXTAREA_MAX_HEIGHT = 240;
-    const streamTimersRef = useRef<Map<string, number>>(new Map());
+    // removed fake streaming timers
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -126,83 +124,7 @@ export function ChatContainer() {
         );
     };
 
-    // Start a fake streaming effect for the thinking block of a message.
-    const startFakeThinkingStream = (
-        id: string,
-        fullDescription: string | undefined,
-        fullGroq: string | undefined
-    ) => {
-        // clear existing timer if any
-        const existing = streamTimersRef.current.get(id);
-        if (existing) {
-            clearInterval(existing);
-            streamTimersRef.current.delete(id);
-        }
-
-        const desc = fullDescription || "";
-        const groq = fullGroq || "";
-
-        // We'll reveal description first, then groq with a small pause
-        let descIndex = 0;
-        let groqIndex = 0;
-        let phase: "desc" | "pause" | "groq" = desc
-            ? "desc"
-            : groq
-            ? "groq"
-            : "desc";
-
-        const intervalMs = 40; // speed of fake typing
-        const timer = window.setInterval(() => {
-            setMessages((prev) =>
-                prev.map((m) => {
-                    if (m.id !== id || !m.thinking) return m;
-
-                    const newThinking = { ...m.thinking } as any;
-
-                    if (phase === "desc") {
-                        descIndex += Math.max(1, Math.floor(Math.random() * 3));
-                        if (descIndex >= desc.length) {
-                            descIndex = desc.length;
-                            newThinking.visibleDescription = desc.slice(
-                                0,
-                                descIndex
-                            );
-                            if (groq) phase = "pause";
-                        } else {
-                            newThinking.visibleDescription = desc.slice(
-                                0,
-                                descIndex
-                            );
-                        }
-                    } else if (phase === "pause") {
-                        // short pause before groq
-                        phase = "groq";
-                    } else if (phase === "groq") {
-                        groqIndex += Math.max(1, Math.floor(Math.random() * 3));
-                        if (groqIndex >= groq.length) {
-                            groqIndex = groq.length;
-                            newThinking.visibleGroq = groq.slice(0, groqIndex);
-                            // done
-                            const t = streamTimersRef.current.get(id);
-                            if (t) {
-                                clearInterval(t);
-                                streamTimersRef.current.delete(id);
-                            }
-                        } else {
-                            newThinking.visibleGroq = groq.slice(0, groqIndex);
-                        }
-                    }
-
-                    return {
-                        ...m,
-                        thinking: { ...m.thinking, ...newThinking },
-                    };
-                })
-            );
-        }, intervalMs);
-
-        streamTimersRef.current.set(id, timer);
-    };
+    // fake thinking stream removed — server now returns description/groqOutput directly
 
     useEffect(() => {
         scrollToBottom();
@@ -223,12 +145,9 @@ export function ChatContainer() {
         }
     }, [input]);
 
-    // cleanup any running stream timers on unmount
+    // cleanup on unmount (no fake timers to clear)
     useEffect(() => {
-        return () => {
-            streamTimersRef.current.forEach((t) => clearInterval(t));
-            streamTimersRef.current.clear();
-        };
+        return () => {};
     }, []);
 
     // Load chat history and API keys on mount (client-side only to avoid hydration mismatch)
@@ -388,7 +307,7 @@ export function ChatContainer() {
                 const tempId = (Date.now() + 1).toString();
                 const processingMessage: Message = {
                     id: tempId,
-                    text: "Đang tạo video — quá trình có thể mất khoảng 30–60 giây. Vui lòng chờ trong giây lát. Vui lòng không đóng hay tải lại trang này",
+                    text: "Đang tạo video — quá trình có thể mất khoảng 3 - 5 phút. Vui lòng chờ trong giây lát. Vui lòng không đóng hay tải lại trang này",
                     sender: "bot",
                     timestamp: new Date(),
                     processing: true,
@@ -405,14 +324,7 @@ export function ChatContainer() {
                 // mark processing so user cannot send new messages until finished
                 setIsProcessing(true);
 
-                // Start fake streaming for thinking content if present
-                if (processingMessage.thinking) {
-                    startFakeThinkingStream(
-                        tempId,
-                        thinkingDescription,
-                        thinkingGroq
-                    );
-                }
+                // no fake thinking stream — server returns description/groq directly
 
                 // Start polling in background
                 (async () => {
@@ -498,22 +410,13 @@ export function ChatContainer() {
                                                       statusData?.geminiDescription,
                                                   groqOutput:
                                                       statusData?.groqOutput,
-                                                  visibleDescription:
-                                                      statusData?.geminiDescription,
-                                                  visibleGroq:
-                                                      statusData?.groqOutput,
                                                   // collapse thinking when finished
                                                   collapsed: true,
                                               }
                                             : undefined,
                                 };
 
-                                // Clear any fake-stream timer for this processing message
-                                const t = streamTimersRef.current.get(tempId);
-                                if (t) {
-                                    clearInterval(t);
-                                    streamTimersRef.current.delete(tempId);
-                                }
+                                // no fake-stream timers to clear
 
                                 // Replace processing message with result (preserve thinking collapsed) or append if processing message was not found
                                 setMessages((prev) => {
@@ -556,21 +459,12 @@ export function ChatContainer() {
                                                       statusData?.geminiDescription,
                                                   groqOutput:
                                                       statusData?.groqOutput,
-                                                  visibleDescription:
-                                                      statusData?.geminiDescription,
-                                                  visibleGroq:
-                                                      statusData?.groqOutput,
                                                   collapsed: true,
                                               }
                                             : undefined,
                                 };
 
-                                // Clear any fake-stream timer for this processing message
-                                const t = streamTimersRef.current.get(tempId);
-                                if (t) {
-                                    clearInterval(t);
-                                    streamTimersRef.current.delete(tempId);
-                                }
+                                // no fake-stream timers to clear
 
                                 // Replace processing message with failure message (append if not found)
                                 setMessages((prev) => {
@@ -821,10 +715,6 @@ export function ChatContainer() {
 
     // Perform the actual clearing of chat history (no confirmation here)
     const doClearHistory = () => {
-        // Clear any running stream timers
-        streamTimersRef.current.forEach((t) => clearInterval(t));
-        streamTimersRef.current.clear();
-
         setMessages([]);
         try {
             localStorage.removeItem(STORAGE_KEY);
@@ -1059,10 +949,8 @@ export function ChatContainer() {
                                             </div>
                                             {!message.thinking.collapsed && (
                                                 <div className="mt-2 text-sm text-muted-foreground space-y-2">
-                                                    {(message.thinking
-                                                        .visibleDescription ??
-                                                        message.thinking
-                                                            .description) && (
+                                                    {message.thinking
+                                                        .description && (
                                                         <div>
                                                             <div className="font-semibold text-xs">
                                                                 Tôi sẽ phân tích
@@ -1070,38 +958,27 @@ export function ChatContainer() {
                                                                 tiên
                                                             </div>
                                                             <div className="whitespace-pre-wrap">
-                                                                {message
-                                                                    .thinking
-                                                                    .visibleDescription ??
+                                                                {
                                                                     message
                                                                         .thinking
-                                                                        .description}
+                                                                        .description
+                                                                }
                                                             </div>
                                                         </div>
                                                     )}
-                                                    {(message.thinking
-                                                        .visibleGroq !==
-                                                        undefined ||
-                                                        (message.thinking
-                                                            .collapsed &&
-                                                            message.thinking
-                                                                .groqOutput)) && (
+                                                    {message.thinking
+                                                        .groqOutput && (
                                                         <div>
                                                             <div className="font-semibold text-xs">
                                                                 Gợi ý hành động
                                                                 tiếp theo
                                                             </div>
                                                             <div className="whitespace-pre-wrap">
-                                                                {message
-                                                                    .thinking
-                                                                    .visibleGroq !==
-                                                                undefined
-                                                                    ? message
-                                                                          .thinking
-                                                                          .visibleGroq
-                                                                    : message
-                                                                          .thinking
-                                                                          .groqOutput}
+                                                                {
+                                                                    message
+                                                                        .thinking
+                                                                        .groqOutput
+                                                                }
                                                             </div>
                                                         </div>
                                                     )}
@@ -1223,34 +1100,52 @@ export function ChatContainer() {
                             />
                         </div>
 
-                        <textarea
-                            ref={textareaRef}
-                            placeholder="Nhập mô tả (bắt buộc kèm ảnh)..."
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onInput={() => {
-                                const el = textareaRef.current;
-                                if (!el) return;
-                                el.style.height = "auto";
-                                const max = TEXTAREA_MAX_HEIGHT;
-                                if (el.scrollHeight > max) {
-                                    el.style.height = `${max}px`;
-                                    el.style.overflowY = "auto";
-                                } else {
-                                    el.style.height = `${el.scrollHeight}px`;
-                                    el.style.overflowY = "hidden";
+                        <div className="relative flex-1">
+                            <textarea
+                                ref={textareaRef}
+                                placeholder={
+                                    isGeneratingPrompt
+                                        ? ""
+                                        : "Nhập mô tả (bắt buộc kèm ảnh)..."
                                 }
-                            }}
-                            disabled={isLoading || isProcessing}
-                            className="flex-1 resize-none overflow-hidden rounded-md border border-border px-3 py-2 bg-transparent focus:outline-none"
-                        />
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                onInput={() => {
+                                    const el = textareaRef.current;
+                                    if (!el) return;
+                                    el.style.height = "auto";
+                                    const max = TEXTAREA_MAX_HEIGHT;
+                                    if (el.scrollHeight > max) {
+                                        el.style.height = `${max}px`;
+                                        el.style.overflowY = "auto";
+                                    } else {
+                                        el.style.height = `${el.scrollHeight}px`;
+                                        el.style.overflowY = "hidden";
+                                    }
+                                }}
+                                disabled={isLoading || isProcessing}
+                                className="w-full resize-none overflow-hidden rounded-md border border-border px-3 py-2 bg-transparent focus:outline-none"
+                            />
+
+                            {isGeneratingPrompt &&
+                                (!input || input.trim() === "") && (
+                                    <div className="absolute inset-0 flex items-start pl-3 pt-2 pointer-events-none text-muted-foreground">
+                                        <span className="whitespace-pre">
+                                            Đang tạo prompt từ ảnh
+                                        </span>
+                                        <span className="ml-1 inline-block">
+                                            <AnimatedEllipsis />
+                                        </span>
+                                    </div>
+                                )}
+                        </div>
 
                         <div className="flex flex-col items-center gap-2">
                             <Button
                                 size="sm"
                                 onClick={async () => {
                                     if (!uploadedImage) return;
-                                    setIsLoading(true);
+                                    setIsGeneratingPrompt(true);
                                     try {
                                         const body: any = {
                                             imageBase64: uploadedImage.src,
@@ -1281,9 +1176,26 @@ export function ChatContainer() {
                                             const txt = await res
                                                 .text()
                                                 .catch(() => "");
-                                            throw new Error(
-                                                `Describe failed: ${res.status} ${txt}`
+                                            // Try to extract a friendly message from JSON if possible
+                                            let friendly = txt;
+                                            try {
+                                                const parsed = JSON.parse(
+                                                    txt || "{}"
+                                                );
+                                                if (parsed?.error)
+                                                    friendly = parsed.error;
+                                            } catch (e) {
+                                                // leave friendly as raw text
+                                            }
+                                            console.error(
+                                                "Describe failed:",
+                                                res.status,
+                                                friendly
                                             );
+                                            alert(
+                                                `Lỗi khi sinh prompt: ${friendly}`
+                                            );
+                                            return;
                                         }
 
                                         const data = await res.json();
@@ -1299,14 +1211,16 @@ export function ChatContainer() {
                                             "Lỗi khi sinh prompt từ ảnh. Vui lòng thử lại."
                                         );
                                     } finally {
-                                        setIsLoading(false);
+                                        setIsGeneratingPrompt(false);
                                     }
                                 }}
                                 disabled={
-                                    isLoading || isProcessing || !uploadedImage
+                                    isGeneratingPrompt ||
+                                    isProcessing ||
+                                    !uploadedImage
                                 }
                                 title={
-                                    !uploadedImage  
+                                    !uploadedImage
                                         ? "Vui lòng upload ảnh trước khi sinh prompt"
                                         : "Sinh prompt từ ảnh"
                                 }
@@ -1321,6 +1235,7 @@ export function ChatContainer() {
                                 disabled={
                                     isLoading ||
                                     isProcessing ||
+                                    isGeneratingPrompt ||
                                     !uploadedImage ||
                                     !input ||
                                     input.trim() === ""

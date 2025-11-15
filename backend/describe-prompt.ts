@@ -2,6 +2,7 @@
 export const DESCRIBE_IMAGE_PROMPT = `Describe the person in the image in clear, natural English.
 Focus strictly on what is visually present.
 Include details about:
+- gender
 - the person’s physical appearance
 - facial expression
 - clothing

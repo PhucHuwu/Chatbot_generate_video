@@ -8,7 +8,9 @@ import { Groq } from "groq-sdk";
 export async function sendToGroq(inputText: string, apiKeyOverride?: string) {
     const apiKey = apiKeyOverride || process.env.GROQ_API_KEY;
     if (!apiKey) {
-        throw new Error("GROQ_API_KEY not configured in env or provided as override");
+        throw new Error(
+            "GROQ_API_KEY not configured in env or provided as override"
+        );
     }
 
     const groq = new Groq({ apiKey });
@@ -22,10 +24,10 @@ export async function sendToGroq(inputText: string, apiKeyOverride?: string) {
     - Bạn chỉ được chọn những hành động phù hợp với mô tả trang phục và bối cảnh, không mô tả hành động liên quan đến đồ vật/trang phục nếu caption không đề cập.\n
     - Các hành động gợi cảm ví dụ (Ưu tiên tác hành động liên quan đến trang phục của nhân vật, trách các hoạt động tương tác tay với khuôn mặt):\n
       • Điều chỉnh trang phục (kéo áo xuống một chút, kéo quần xuống một chút, kéo dây cho tụt xuống một chút)\n
-      • Xoay một vòng cơ thể\n
+      • Xoay một vòng cơ thể để lộ đường cong mềm mại\n
       • Vuốt ve cơ thể mình như: vuốt ve ngực, vuốt ve đùi\n
     - Không mô tả bất cứ điều gì không nhìn thấy: không suy đoán cảm xúc, không thêm bối cảnh, không thêm người hay đồ vật mới.
-    - Nếu mô tả một hành động, hãy mô tả chi tiết **cách** hành động đó diễn ra (ví dụ: hướng chuyển động, vị trí tay, cách chạm, cách đẩy hoặc kéo…).
+    - Hãy mô tả chi tiết **cách** hành động đó diễn ra.
     - Không mô tả hành động mâu thuẫn với caption.\n
 
     Đầu vào: ${inputText}\n\n
@@ -40,11 +42,11 @@ export async function sendToGroq(inputText: string, apiKeyOverride?: string) {
             },
         ],
         model: "openai/gpt-oss-120b",
-        temperature: 1,
+        temperature: 1.7,
         max_completion_tokens: 8192,
         top_p: 1,
         stream: true,
-        reasoning_effort: "medium",
+        reasoning_effort: "high",
         stop: null,
     });
 
