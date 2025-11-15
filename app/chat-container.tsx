@@ -711,40 +711,55 @@ export function ChatContainer() {
         }
     };
 
-    // Download media (video) helper: use proxy endpoint to bypass CORS on mobile (iOS Safari, etc.)
-    const downloadMedia = async (url: string) => {
+    // Download media (video) helper: uses XMLHttpRequest for better iOS/mobile compatibility
+    const downloadMedia = (url: string) => {
         if (!url) return;
+
+        // Extract filename from URL
+        let fileName = "video.mp4";
         try {
-            // Use server-side proxy endpoint to fetch and download the video
-            // This bypasses CORS issues and ensures proper download behavior on mobile browsers
-            const proxyUrl = `/api/download?url=${encodeURIComponent(url)}`;
-
-            // Create a temporary link and trigger download
-            const a = document.createElement("a");
-            a.href = proxyUrl;
-
-            // Extract filename from original URL
-            try {
-                const pathname = new URL(url).pathname;
-                const filename = pathname.split("/").pop() || "video.mp4";
-                a.download = filename;
-            } catch (e) {
-                a.download = "video.mp4";
-            }
-
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-        } catch (err) {
-            console.error("Failed to download media:", err);
-            // Fallback: open the proxy URL in new tab
-            try {
-                const proxyUrl = `/api/download?url=${encodeURIComponent(url)}`;
-                window.open(proxyUrl, "_blank", "noopener,noreferrer");
-            } catch (e) {
-                console.error("Failed to open download link:", e);
-            }
+            const pathname = new URL(url).pathname;
+            fileName = pathname.split("/").pop() || "video.mp4";
+        } catch (e) {
+            // keep default fileName
         }
+
+        const xhr = new XMLHttpRequest();
+        xhr.open("GET", url, true);
+        xhr.responseType = "blob";
+
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                const blobUrl = window.URL.createObjectURL(xhr.response);
+                const a = document.createElement("a");
+                a.style.display = "none";
+                a.href = blobUrl;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                // Revoke after short delay
+                setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
+            } else {
+                // Fallback: open in new tab
+                try {
+                    window.open(url, "_blank", "noopener,noreferrer");
+                } catch (e) {
+                    console.error("Failed to download or open media:", e);
+                }
+            }
+        };
+
+        xhr.onerror = function () {
+            // Fallback: open in new tab so user can manually save
+            try {
+                window.open(url, "_blank", "noopener,noreferrer");
+            } catch (e) {
+                console.error("Failed to download or open media:", e);
+            }
+        };
+
+        xhr.send();
     };
 
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
