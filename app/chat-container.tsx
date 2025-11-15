@@ -802,6 +802,7 @@ export function ChatContainer() {
     };
 
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+    const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
 
     // Perform the actual clearing of chat history (no confirmation here)
     const doClearHistory = () => {
@@ -818,6 +819,31 @@ export function ChatContainer() {
         // After clearing, we need to allow saving again
         setHasLoadedHistory(true);
         setIsConfirmOpen(false);
+    };
+
+    // Perform logout (called after user confirms)
+    const doLogout = async () => {
+        // Prevent logout if we're in the middle of creating a video
+        if (isLoading || isProcessing) {
+            setIsLogoutConfirmOpen(false);
+            try {
+                // fallback simple notification
+                alert(
+                    "Không thể đăng xuất khi đang tạo video. Vui lòng đợi quá trình hoàn tất."
+                );
+            } catch (e) {}
+            return;
+        }
+
+        setIsLogoutConfirmOpen(false);
+        try {
+            await fetch("/api/logout", { method: "POST" });
+        } catch (e) {
+            // ignore errors
+        } finally {
+            // Note: không xóa localStorage để giữ lịch sử chat khi đăng nhập lại
+            router.replace("/login");
+        }
     };
 
     // Open the confirmation dialog (replaces native window.confirm)
@@ -880,18 +906,13 @@ export function ChatContainer() {
                             <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={async () => {
-                                    try {
-                                        await fetch("/api/logout", {
-                                            method: "POST",
-                                        });
-                                    } catch (e) {
-                                        // ignore errors
-                                    } finally {
-                                        // Note: không xóa localStorage để giữ lịch sử chat khi đăng nhập lại
-                                        router.replace("/login");
-                                    }
-                                }}
+                                onClick={() => setIsLogoutConfirmOpen(true)}
+                                disabled={isLoading || isProcessing}
+                                title={
+                                    isLoading || isProcessing
+                                        ? "Không thể đăng xuất khi đang tạo video"
+                                        : undefined
+                                }
                             >
                                 Đăng xuất
                             </Button>
@@ -1337,6 +1358,17 @@ export function ChatContainer() {
                             cancelLabel="Hủy"
                             onConfirm={doClearHistory}
                             onCancel={() => setIsConfirmOpen(false)}
+                        />
+                    )}
+                    {isLogoutConfirmOpen && (
+                        <NativeConfirm
+                            open={isLogoutConfirmOpen}
+                            title="Đăng xuất"
+                            description="Bạn có chắc muốn đăng xuất khỏi tài khoản hiện tại? Bạn sẽ cần đăng nhập lại để tiếp tục."
+                            confirmLabel="Đăng xuất"
+                            cancelLabel="Hủy"
+                            onConfirm={doLogout}
+                            onCancel={() => setIsLogoutConfirmOpen(false)}
                         />
                     )}
                 </div>
