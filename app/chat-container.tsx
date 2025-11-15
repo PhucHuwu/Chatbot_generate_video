@@ -711,55 +711,38 @@ export function ChatContainer() {
         }
     };
 
-    // Download media (video) helper: uses XMLHttpRequest for better iOS/mobile compatibility
-    const downloadMedia = (url: string) => {
+    // Download media (video) helper: use server proxy endpoint to ensure proper download headers for iOS
+    const downloadMedia = async (url: string) => {
         if (!url) return;
-
-        // Extract filename from URL
-        let fileName = "video.mp4";
         try {
-            const pathname = new URL(url).pathname;
-            fileName = pathname.split("/").pop() || "video.mp4";
-        } catch (e) {
-            // keep default fileName
-        }
+            // Use server proxy endpoint that sets Content-Disposition header
+            const proxyUrl = `/api/download?url=${encodeURIComponent(url)}`;
 
-        const xhr = new XMLHttpRequest();
-        xhr.open("GET", url, true);
-        xhr.responseType = "blob";
+            // Create a hidden link and trigger download
+            const a = document.createElement("a");
+            a.href = proxyUrl;
 
-        xhr.onload = function () {
-            if (xhr.status === 200) {
-                const blobUrl = window.URL.createObjectURL(xhr.response);
-                const a = document.createElement("a");
-                a.style.display = "none";
-                a.href = blobUrl;
-                a.download = fileName;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                // Revoke after short delay
-                setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
-            } else {
-                // Fallback: open in new tab
-                try {
-                    window.open(url, "_blank", "noopener,noreferrer");
-                } catch (e) {
-                    console.error("Failed to download or open media:", e);
-                }
-            }
-        };
-
-        xhr.onerror = function () {
-            // Fallback: open in new tab so user can manually save
+            // Extract filename from original URL
             try {
-                window.open(url, "_blank", "noopener,noreferrer");
+                const pathname = new URL(url).pathname;
+                a.download = pathname.split("/").pop() || "video.mp4";
             } catch (e) {
-                console.error("Failed to download or open media:", e);
+                a.download = "video.mp4";
             }
-        };
 
-        xhr.send();
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        } catch (err) {
+            console.error("Failed to download media:", err);
+            // Fallback: try opening proxy URL in new tab
+            try {
+                const proxyUrl = `/api/download?url=${encodeURIComponent(url)}`;
+                window.open(proxyUrl, "_blank", "noopener,noreferrer");
+            } catch (e) {
+                console.error("Failed fallback:", e);
+            }
+        }
     };
 
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
