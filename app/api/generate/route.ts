@@ -81,7 +81,11 @@ export async function POST(request: NextRequest) {
             let groqOutput: string | undefined;
 
             try {
-                description = await describeImageWithGemini(image_url);
+                // Allow client to provide API key overrides in the request body
+                const googleApiKey = typeof body?.googleApiKey === "string" ? body.googleApiKey : undefined;
+                const openrouterApiKey = typeof body?.openrouterApiKey === "string" ? body.openrouterApiKey : undefined;
+
+                description = await describeImageWithGemini(image_url, googleApiKey, openrouterApiKey);
                 console.log("Gemini description:", description);
             } catch (e: any) {
                 console.error("Gemini describe failed:", e);
@@ -93,7 +97,8 @@ export async function POST(request: NextRequest) {
 
             // Try Groq; if it fails, log and continue using the Gemini description as prompt
             try {
-                groqOutput = await sendToGroq(description || "");
+                const groqApiKey = typeof body?.groqApiKey === "string" ? body.groqApiKey : undefined;
+                groqOutput = await sendToGroq(description || "", groqApiKey);
                 console.log("Groq output:", groqOutput);
             } catch (gErr: any) {
                 console.error("Groq processing failed:", gErr);

@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Upload, Sun, Moon } from "lucide-react";
+import { Send, Upload, Sun, Moon, Settings } from "lucide-react";
 import { useTheme } from "@/components/theme-toggle-provider";
 
 interface Message {
@@ -78,6 +78,12 @@ export function ChatContainer() {
         fileName: string;
         size: number;
     } | null>(null);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [settings, setSettings] = useState<{
+        googleApiKey?: string;
+        openrouterApiKey?: string;
+        groqApiKey?: string;
+    }>({});
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -209,6 +215,13 @@ export function ChatContainer() {
         } catch (e) {
             console.warn("Failed to load chat history:", e);
         }
+        // Load saved API keys if present
+        try {
+            const s = localStorage.getItem("api_keys_v1");
+            if (s) setSettings(JSON.parse(s));
+        } catch (e) {
+            // ignore
+        }
     }, []);
 
     // Persist chat history to localStorage whenever messages change
@@ -263,6 +276,12 @@ export function ChatContainer() {
                 body.imageBase64 = uploadedImage.src;
                 body.fileName = uploadedImage.fileName;
             }
+            // Include optional API key overrides from settings (if set)
+            if (settings.googleApiKey)
+                body.googleApiKey = settings.googleApiKey;
+            if (settings.openrouterApiKey)
+                body.openrouterApiKey = settings.openrouterApiKey;
+            if (settings.groqApiKey) body.groqApiKey = settings.groqApiKey;
 
             const response = await fetch("/api/generate", {
                 method: "POST",
@@ -1106,6 +1125,16 @@ export function ChatContainer() {
                         >
                             <Upload className="w-4 h-4" />
                         </Button>
+                        <Button
+                            type="button"
+                            disabled={isLoading || isProcessing}
+                            size="icon"
+                            variant="ghost"
+                            title="Cài đặt API Keys"
+                            onClick={() => setIsSettingsOpen(true)}
+                        >
+                            <Settings className="w-4 h-4" />
+                        </Button>
                         <input
                             ref={fileInputRef}
                             type="file"
@@ -1127,6 +1156,115 @@ export function ChatContainer() {
                             <Send className="w-4 h-4" />
                         </Button>
                     </form>
+                    {/* Settings modal */}
+                    {isSettingsOpen && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center">
+                            <div
+                                className="absolute inset-0 bg-black/40"
+                                onClick={() => setIsSettingsOpen(false)}
+                            />
+                            <div className="relative z-10 w-full max-w-lg bg-card border border-border rounded-md p-4">
+                                <h3 className="text-lg font-semibold mb-2">
+                                    Cài đặt API Keys
+                                </h3>
+                                <p className="text-xs text-amber-600 mb-2">
+                                    Lưu ý: API sẽ được lưu trên browser storage
+                                    (localStorage). Chỉ nhập API Key miễn phí
+                                    hoặc key mà bạn sẵn sàng để lộ.
+                                </p>
+                                <div className="space-y-2">
+                                    <div>
+                                        <label className="text-xs">
+                                            GEMINI_API_KEY
+                                        </label>
+                                        <Input
+                                            value={settings.googleApiKey || ""}
+                                            onChange={(e) =>
+                                                setSettings((s) => ({
+                                                    ...s,
+                                                    googleApiKey:
+                                                        e.target.value,
+                                                }))
+                                            }
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs">
+                                            OPENROUTER_API_KEY
+                                        </label>
+                                        <Input
+                                            value={
+                                                settings.openrouterApiKey || ""
+                                            }
+                                            onChange={(e) =>
+                                                setSettings((s) => ({
+                                                    ...s,
+                                                    openrouterApiKey:
+                                                        e.target.value,
+                                                }))
+                                            }
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs">
+                                            GROQ_API_KEY
+                                        </label>
+                                        <Input
+                                            value={settings.groqApiKey || ""}
+                                            onChange={(e) =>
+                                                setSettings((s) => ({
+                                                    ...s,
+                                                    groqApiKey: e.target.value,
+                                                }))
+                                            }
+                                        />
+                                    </div>
+                                </div>
+                                <div className="mt-4 flex justify-end gap-2">
+                                    <Button
+                                        variant="ghost"
+                                        onClick={() => {
+                                            // revert to persisted values
+                                            try {
+                                                const s =
+                                                    localStorage.getItem(
+                                                        "api_keys_v1"
+                                                    );
+                                                if (s)
+                                                    setSettings(JSON.parse(s));
+                                                else setSettings({});
+                                            } catch (e) {
+                                                setSettings({});
+                                            }
+                                            setIsSettingsOpen(false);
+                                        }}
+                                    >
+                                        Hủy
+                                    </Button>
+                                    <Button
+                                        onClick={() => {
+                                            try {
+                                                localStorage.setItem(
+                                                    "api_keys_v1",
+                                                    JSON.stringify(
+                                                        settings || {}
+                                                    )
+                                                );
+                                            } catch (e) {
+                                                console.error(
+                                                    "Failed to save API keys",
+                                                    e
+                                                );
+                                            }
+                                            setIsSettingsOpen(false);
+                                        }}
+                                    >
+                                        Lưu
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </footer>
         </div>

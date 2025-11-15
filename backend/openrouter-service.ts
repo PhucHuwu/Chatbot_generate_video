@@ -7,12 +7,14 @@ import DESCRIBE_IMAGE_PROMPT from "./describe-prompt";
 
 export async function callOpenRouterFallback(
     imageUrl: string,
-    promptText?: string
+    promptText?: string,
+    openrouterApiKeyOverride?: string
 ): Promise<{ text: string }> {
-    const openrouterApiKey = process.env.OPENROUTER_API_KEY;
+    const openrouterApiKey =
+        openrouterApiKeyOverride || process.env.OPENROUTER_API_KEY;
     if (!openrouterApiKey) {
         throw new Error(
-            "OpenRouter API key not configured. Set OPENROUTER_API_KEY in env to enable fallback."
+            "OpenRouter API key not configured. Set OPENROUTER_API_KEY in env or provide override to enable fallback."
         );
     }
 

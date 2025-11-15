@@ -27,13 +27,17 @@ async function fetchImageAsPart(imageUrl: string): Promise<Part> {
 
 /**
  * Send image + prompt to Gemini (gemini-2.5-flash) and return the text description.
- * Requires GOOGLE_API_KEY or GEMINI_API_KEY in environment.
+ * Requires GEMINI_API_KEY in environment.
  */
-export async function describeImageWithGemini(imageUrl: string) {
-    const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+export async function describeImageWithGemini(
+    imageUrl: string,
+    apiKeyOverride?: string,
+    openrouterApiKeyOverride?: string
+) {
+    const apiKey = apiKeyOverride || process.env.GEMINI_API_KEY;
     if (!apiKey) {
         throw new Error(
-            "Google/Gemini API key not configured. Set GOOGLE_API_KEY or GEMINI_API_KEY in env."
+            "Google/Gemini API key not configured. Set GEMINI_API_KEY in env, or provide override."
         );
     }
 
@@ -76,7 +80,11 @@ export async function describeImageWithGemini(imageUrl: string) {
             await new Promise((r) => setTimeout(r, 3000));
             // Try OpenRouter fallback (separate module)
             try {
-                resp = await callOpenRouterFallback(imageUrl, prompt);
+                resp = await callOpenRouterFallback(
+                    imageUrl,
+                    prompt,
+                    openrouterApiKeyOverride
+                );
                 usedFallback = true;
                 fallbackSource = "openrouter";
             } catch (err2: any) {

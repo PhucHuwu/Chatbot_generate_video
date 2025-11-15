@@ -5,10 +5,10 @@ import { Groq } from "groq-sdk";
  * accumulating the full output string to return.
  * Requires GROQ_API_KEY in environment.
  */
-export async function sendToGroq(inputText: string) {
-    const apiKey = process.env.GROQ_API_KEY;
+export async function sendToGroq(inputText: string, apiKeyOverride?: string) {
+    const apiKey = apiKeyOverride || process.env.GROQ_API_KEY;
     if (!apiKey) {
-        throw new Error("GROQ_API_KEY not configured in env");
+        throw new Error("GROQ_API_KEY not configured in env or provided as override");
     }
 
     const groq = new Groq({ apiKey });
