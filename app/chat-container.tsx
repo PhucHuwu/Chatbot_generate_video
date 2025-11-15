@@ -865,6 +865,37 @@ export function ChatContainer() {
         }
     };
 
+    // Download media (video) helper: try fetch->blob then fallback to opening in new tab
+    const downloadMedia = async (url: string) => {
+        if (!url) return;
+        try {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error("Network response not ok");
+            const blob = await res.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = blobUrl;
+            try {
+                const pathname = new URL(url).pathname;
+                a.download = pathname.split("/").pop() || "video.mp4";
+            } catch (e) {
+                a.download = "video.mp4";
+            }
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            // revoke after a short delay to ensure download started
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+        } catch (err) {
+            // Fallback: open in new tab so user can manually save
+            try {
+                window.open(url, "_blank", "noopener,noreferrer");
+            } catch (e) {
+                console.error("Failed to download or open media:", e);
+            }
+        }
+    };
+
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
     const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
 
@@ -1176,9 +1207,24 @@ export function ChatContainer() {
                                                     controls
                                                     className="rounded max-w-[200px] h-auto"
                                                 />
-                                                <p className="text-xs mt-1 opacity-70">
-                                                    Video kết quả
-                                                </p>
+                                                <div className="mt-2 flex items-center justify-between">
+                                                    <p className="text-xs opacity-70">
+                                                        Video kết quả
+                                                    </p>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() =>
+                                                            downloadMedia(
+                                                                message.media!
+                                                                    .src
+                                                            )
+                                                        }
+                                                        aria-label="Tải xuống video"
+                                                    >
+                                                        Tải xuống
+                                                    </Button>
+                                                </div>
                                             </div>
                                         )}
                                     {message.text && (

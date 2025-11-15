@@ -119,7 +119,16 @@
     * {
         @apply border-border outline-ring/50;
     }
+    html,
+    body,
+    #__next {
+        height: 100%;
+    }
+
+    /* Prevent the entire page from scrolling; use internal scrollable containers instead */
     body {
+        height: 100vh;
+        overflow: hidden;
         @apply bg-background text-foreground;
     }
 }
