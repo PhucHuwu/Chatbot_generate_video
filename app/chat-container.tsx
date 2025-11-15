@@ -711,33 +711,38 @@ export function ChatContainer() {
         }
     };
 
-    // Download media (video) helper: try fetch->blob then fallback to opening in new tab
+    // Download media (video) helper: use proxy endpoint to bypass CORS on mobile (iOS Safari, etc.)
     const downloadMedia = async (url: string) => {
         if (!url) return;
         try {
-            const res = await fetch(url);
-            if (!res.ok) throw new Error("Network response not ok");
-            const blob = await res.blob();
-            const blobUrl = URL.createObjectURL(blob);
+            // Use server-side proxy endpoint to fetch and download the video
+            // This bypasses CORS issues and ensures proper download behavior on mobile browsers
+            const proxyUrl = `/api/download?url=${encodeURIComponent(url)}`;
+
+            // Create a temporary link and trigger download
             const a = document.createElement("a");
-            a.href = blobUrl;
+            a.href = proxyUrl;
+
+            // Extract filename from original URL
             try {
                 const pathname = new URL(url).pathname;
-                a.download = pathname.split("/").pop() || "video.mp4";
+                const filename = pathname.split("/").pop() || "video.mp4";
+                a.download = filename;
             } catch (e) {
                 a.download = "video.mp4";
             }
+
             document.body.appendChild(a);
             a.click();
             a.remove();
-            // revoke after a short delay to ensure download started
-            setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
         } catch (err) {
-            // Fallback: open in new tab so user can manually save
+            console.error("Failed to download media:", err);
+            // Fallback: open the proxy URL in new tab
             try {
-                window.open(url, "_blank", "noopener,noreferrer");
+                const proxyUrl = `/api/download?url=${encodeURIComponent(url)}`;
+                window.open(proxyUrl, "_blank", "noopener,noreferrer");
             } catch (e) {
-                console.error("Failed to download or open media:", e);
+                console.error("Failed to open download link:", e);
             }
         }
     };
