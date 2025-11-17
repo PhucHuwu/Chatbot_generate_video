@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Send, Upload, Sun, Moon, Settings, Trash, Sparkles, Download } from "lucide-react";
+import { Send, Upload, Sun, Moon, Settings, Trash, Sparkles, Download, AlertTriangle } from "lucide-react";
 import { useTheme } from "@/components/theme-toggle-provider";
 import NativeConfirm from "@/components/ui/native-confirm";
 
@@ -822,16 +822,27 @@ export function ChatContainer() {
                                     {isFetchingCredits ? (
                                         <span className="inline-flex items-center gap-1">
                                             <span className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce" />
-                                            <span>$...</span>
+                                            <span>...</span>
                                         </span>
                                     ) : credits === null ? (
-                                        <span>$-</span>
+                                        <span>-</span>
                                     ) : (
                                         <span className="inline-flex items-center gap-1">
-                                            <span>${credits}</span>
-                                            <span className="text-muted-foreground">
-                                                ({Math.floor(credits / (settings.duration === "5" ? 0.21 : 0.42))} video)
-                                            </span>
+                                            {(() => {
+                                                const remainingVideos = Math.floor(credits / (settings.duration === "5" ? 42 : 84));
+                                                const isLowCredits = remainingVideos <= 3;
+                                                return (
+                                                    <>
+                                                        {isLowCredits && (
+                                                            <AlertTriangle className="w-4 h-4 text-amber-500" aria-label="Cảnh báo: Credits thấp" />
+                                                        )}
+                                                        <span>{credits} credits</span>
+                                                        <span className={isLowCredits ? "text-amber-500 font-medium" : "text-muted-foreground"}>
+                                                            ({remainingVideos} video)
+                                                        </span>
+                                                    </>
+                                                );
+                                            })()}
                                         </span>
                                     )}
                                 </span>
