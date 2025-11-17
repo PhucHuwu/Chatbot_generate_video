@@ -1,162 +1,278 @@
 # Generate Video Web App
 
-Ứng dụng Next.js (Next 16) để tạo video từ prompt (văn bản) và/hoặc ảnh, với toàn bộ logic nghiệp vụ chạy ở phía server.
+A modern, AI-powered web application for generating videos from text prompts or images. Built with Next.js 16 and powered by multiple AI services including KIE AI, Google Gemini, and GROQ.
 
-README này tóm tắt cấu trúc, cách chạy, API và những quy ước quan trọng khi phát triển hoặc triển khai.
+## Features
 
-## Tổng quan
+-   **Text-to-Video Generation**: Convert text prompts into engaging videos using AI
+-   **Image-to-Video Generation**: Transform static images into dynamic video content
+-   **AI-Powered Image Description**: Automatic image captioning using Google Gemini
+-   **Chatbot Interface**: Interactive chat-based UI for seamless video generation
+-   **Real-time Status Tracking**: Monitor your video generation progress in real-time
+-   **Credit System**: Built-in credit management for video generation
+-   **Secure Authentication**: Cookie-based authentication system
+-   **API Documentation**: Comprehensive API documentation with Swagger UI (development mode)
+-   **Dark Mode Support**: Beautiful UI with dark/light theme switching
 
--   Frontend (client): giao diện và gọi API (chỉ gọi `/api/*`).
-    -   File chính UI chat: `frontend/chat-container.tsx` (client component).
--   Backend (server): mọi business logic, gọi KIE API, xử lý file, polling đều nằm trong `backend/` và các route API dưới `app/api/`.
-    -   Tạo media & polling: `backend/generate-service.ts` (chứa `generateMedia`, `fetchTaskInfo`).
-    -   API tạo media: `app/api/generate/route.ts`.
-    -   API status (polling fallback): `app/api/generate/status/route.ts`.
-    -   Ví dụ upload ảnh: `app/api/chat/route.ts` + `backend/chat-service.ts`.
+## Tech Stack
 
-## Các quy ước quan trọng
+### Frontend
 
--   Frontend KHÔNG gọi trực tiếp tới KIE API hoặc dịch vụ bên thứ ba. Luôn gọi các route `/api/*` của Next.js.
--   Khi gửi ảnh từ client, gửi một trong hai giá trị:
-    -   `imageBase64`: data URL (ví dụ `data:image/png;base64,...`) — backend sẽ lưu vào `public/uploads/` và trả URL công khai.
-    -   `image_url`: URL công khai đến ảnh (server sẽ dùng trực tiếp).
--   Response lỗi chuẩn: trả JSON chứa trường `error` và HTTP status code tương ứng (400/500). Client sẽ parse `data.error`.
--   Polling mặc định (backend): 2s x 30 lần (~60s). Client có fallback gọi `/api/generate/status?taskId=...`.
--   Không commit API keys; dùng biến môi trường (ví dụ `KIE_API_KEY`).
--   Frontend giới hạn kích thước ảnh (ví dụ hiện tại: <5MB). Server có thể validate khi cần.
+-   **Framework**: [Next.js 16](https://nextjs.org/) (App Router)
+-   **Language**: TypeScript
+-   **UI Library**: React 19
+-   **Styling**: Tailwind CSS 4
+-   **Component Library**: [shadcn/ui](https://ui.shadcn.com/) (Radix UI)
+-   **Icons**: Lucide React
+-   **Form Handling**: React Hook Form + Zod validation
+-   **Notifications**: Sonner
 
-## Cài đặt & Chạy (Windows PowerShell)
+### Backend Services
 
-1. Cài dependencies và chuẩn bị pnpm (PowerShell):
+-   **Video Generation**: [KIE AI](https://kie.ai)
+-   **AI Image Description**: Google Gemini
+-   **Language Processing**: GROQ / OpenRouter
+-   **Image Storage**: Cloudinary
+-   **API Documentation**: Swagger UI + OpenAPI 3.0
 
-```powershell
-corepack enable; corepack prepare pnpm@latest --activate; pnpm install
-```
+## Prerequisites
 
-2. Tạo file môi trường (nếu có mẫu):
+Before you begin, ensure you have the following installed:
 
-```powershell
-copy .env.example .env.local
-# hoặc tạo .env.local thủ công
-```
+-   **Node.js** 18.x or higher
+-   **pnpm** (recommended) or npm/yarn
+-   **Git**
 
-3. Thiết lập biến môi trường quan trọng (ví dụ trong `.env.local`):
+You'll also need API keys from:
 
--   `KIE_API_KEY` — bắt buộc để gọi KIE API từ server.
--   (Tùy chọn) `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` nếu sử dụng Cloudinary cho upload.
+-   [KIE AI](https://kie.ai) - for video generation
+-   [Google Cloud](https://console.developers.google.com) - for Gemini API
+-   [Cloudinary](https://cloudinary.com) - for image uploads
+-   [GROQ](https://www.sanity.io/manage) - for language processing (optional)
 
-4. Chạy dev server:
+## Installation
 
-```powershell
+1. **Clone the repository**
+
+    ```bash
+    git clone <repository-url>
+    cd Generate_video_web_app
+    ```
+
+2. **Install dependencies**
+
+    ```bash
+    pnpm install
+    # or
+    npm install
+    # or
+    yarn install
+    ```
+
+3. **Set up environment variables**
+
+    Copy the example environment file:
+
+    ```bash
+    cp .env.example .env
+    ```
+
+    Then edit `.env` with your actual API keys:
+
+    ```env
+    # KIE API Key for video generation
+    KIE_API_KEY=your_kie_api_key_here
+
+    # Cloudinary credentials for image upload
+    CLOUDINARY_CLOUD_NAME=your_cloud_name
+    CLOUDINARY_API_KEY=your_api_key
+    CLOUDINARY_API_SECRET=your_api_secret
+
+    # Google API Key for Gemini
+    GEMINI_API_KEY=your_google_api_key_here
+
+    # GROQ API Key (optional)
+    GROQ_API_KEY=your_groq_api_key_here
+
+    # Login credentials
+    LOGIN_USER=your_username
+    LOGIN_PASS=your_secure_password
+    ```
+
+## Usage
+
+### Development Mode
+
+Start the development server:
+
+```bash
 pnpm dev
+# or
+npm run dev
 ```
 
-5. Build cho production:
+The application will be available at [http://localhost:3000](http://localhost:3000)
 
-```powershell
-pnpm build
-```
+**Note**: In development mode, you can access:
 
-Mặc định ứng dụng mở tại http://localhost:3000
+-   **API Documentation**: http://localhost:3000/api/docs
+-   **OpenAPI JSON**: http://localhost:3000/api/docs/openapi.json
 
-## API chính (ví dụ)
+### Production Mode
 
-1. POST /api/generate
+1. **Build the application**
 
-Request JSON body (ví dụ):
+    ```bash
+    pnpm build
+    ```
 
-```json
-{
-    "prompt": "A calm sunset over mountains",
-    "imageBase64": "data:image/png;base64,..." // hoặc "image_url": "https://..."
-}
-```
+2. **Start the production server**
+    ```bash
+    pnpm start
+    ```
 
-Response (success):
+**Note**: API documentation is automatically disabled in production for security.
 
-```json
-{
-    "taskId": "abc123",
-    "state": "pending"
-}
-```
+## API Endpoints
 
-Response (error): HTTP 400/500
+The application provides the following REST API endpoints:
 
-```json
-{ "error": "Mô tả lỗi rõ ràng" }
-```
+### Authentication
 
-2. GET /api/generate/status?taskId=abc123
+-   `POST /api/login` - User login
+-   `POST /api/logout` - User logout
+-   `GET /api/auth` - Check authentication status
 
-Response:
+### Video Generation
 
-```json
-{
-    "taskId": "abc123",
-    "state": "succeeded|running|failed",
-    "resultUrls": ["/uploads/video1.mp4"],
-    "raw": {
-        /* raw response từ KIE API nếu cần */
-    }
-}
-```
+-   `POST /api/generate` - Generate video from text or image
+-   `GET /api/generate/status` - Check video generation status
+-   `GET /api/credits` - Get remaining credits
 
-3. Upload ảnh (ví dụ dùng trong chat): POST /api/chat
+### Image Processing
 
-Body JSON: `imageBase64` hoặc `image_url`.
-Server sẽ trả URL công khai (nếu lưu file vào `public/uploads/`).
+-   `POST /api/describe` - Generate description for an image
 
-## Cấu trúc tệp quan trọng
+For detailed API documentation with request/response examples, see:
 
--   `frontend/chat-container.tsx` — UI chat và gọi API.
--   `backend/generate-service.ts` — chứa `generateMedia`, `fetchTaskInfo` và logic poll nội bộ.
--   `backend/chat-service.ts` — xử lý upload ảnh và các logic chat.
--   `app/api/generate/route.ts` — route tạo tác vụ (entrypoint client gọi).
--   `app/api/generate/status/route.ts` — route kiểm tra trạng thái tác vụ.
--   `app/api/chat/route.ts` — ví dụ upload ảnh từ client.
+-   [API Documentation (Vietnamese)](./api_doc.md)
+-   [Text-to-Video API (Vietnamese)](./api_document_text_to_video.md)
+-   [Image-to-Video API (Vietnamese)](./api_document_img_to_video.md)
 
-## Vấn đề thường gặp & lưu ý
+Or visit `/api/docs` in development mode for interactive Swagger UI.
 
--   KIE API key bắt buộc cho backend; nếu thiếu, `generate-service` sẽ throw.
--   Nếu thay đổi shape response backend, nhớ cập nhật cả `app/api/generate/route.ts` và client (`frontend/chat-container.tsx`) vì client dựa vào `taskId`, `state`, `resultUrls`.
--   Frontend chỉ gửi `imageBase64` hoặc `image_url` — không gửi `multipart/form-data` vào các route này.
+## Development
 
-## Testing / Development tips
+### Available Scripts
 
--   Khi phát triển, mở DevTools Network để theo dõi các request tới `/api/generate` và `/api/generate/status`.
--   Để debug KIE API calls, in `raw` response trong `generate-service` (chỉ local, KHÔNG log API keys).
+-   `pnpm dev` - Start development server
+-   `pnpm build` - Build for production
+-   `pnpm start` - Start production server
+-   `pnpm lint` - Run ESLint
 
-## Triển khai
+### Code Quality
 
--   Đảm bảo biến môi trường (`KIE_API_KEY`, credentials upload) được cấu hình trên server host.
--   Tối ưu: bật CDN cho `public/uploads` nếu lưu nhiều file lớn.
+This project uses:
 
-## Đóng góp
+-   **TypeScript** for type safety
+-   **ESLint** for code linting
+-   **Tailwind CSS** for consistent styling
+-   **Zod** for runtime validation
 
-Vui lòng tạo Pull Request trên branch `main`. Nếu bạn muốn mở rộng tính năng (ví dụ: thêm model, tăng timeout polling, thêm tests), hãy mô tả rõ thay đổi trong PR.
+### Environment Variables
 
-## Simple login page
+| Variable                | Description                                 | Required                 |
+| ----------------------- | ------------------------------------------- | ------------------------ |
+| `KIE_API_KEY`           | KIE AI API key for video generation         | Yes                      |
+| `GEMINI_API_KEY`        | Google Gemini API key for image description | Yes                      |
+| `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name                       | Yes (for image-to-video) |
+| `CLOUDINARY_API_KEY`    | Cloudinary API key                          | Yes (for image-to-video) |
+| `CLOUDINARY_API_SECRET` | Cloudinary API secret                       | Yes (for image-to-video) |
+| `GROQ_API_KEY`          | GROQ API key for language processing        | Optional                 |
+| `LOGIN_USER`            | Username for authentication                 | Yes                      |
+| `LOGIN_PASS`            | Password for authentication                 | Yes                      |
 
-This repository includes a minimal login page available at `/login` which checks credentials against environment variables.
+## Features in Detail
 
--   Server API: `POST /api/login` — expects JSON { "username": string, "password": string }.
--   Env variables (set them in your `.env.local` or `.ENV` as used in this repo): `LOGIN_USER` and `LOGIN_PASS`.
--   On success the API returns `{ ok: true }` and the client redirects to `/`.
+### Video Generation
 
-Example (in `.env.local` or `.ENV`):
+-   Supports both text-to-video and image-to-video generation
+-   Real-time progress tracking
+-   Automatic retry mechanism
+-   Credit-based usage system
 
-```
-LOGIN_USER=admin
-LOGIN_PASS=admin123
-```
+### Image Description
 
-## **API Docs**
+-   AI-powered image captioning using Google Gemini
+-   Support for public image URLs and base64 data URLs
+-   Automatic image upload to Cloudinary
+-   Optional GROQ integration for enhanced descriptions
 
--   **Path**: `public/swagger/index.html` (bật dev server và mở `http://localhost:3000/swagger` hoặc `http://localhost:3000/swagger/index.html`).
--   **Spec**: `public/openapi.json` chứa OpenAPI (minimal) cho các endpoint chính: `/api/describe`, `/api/generate`, `/api/credits`.
--   **Usage**: Mở trang, chọn endpoint, điền body (JSON) và gửi thử để kiểm tra response nhanh.
+### Authentication
 
-Lưu ý: một vài endpoint yêu cầu API key (ví dụ KIE API key) được cấu hình trên server để hoạt động đúng — nếu thiếu, API sẽ trả lỗi tương ứng.
+-   Cookie-based session management
+-   HTTP-only cookies for security
+-   Protected API routes
+-   Automatic session expiration
 
-Change those to whatever values you want. This login is intentionally minimal (no sessions/cookies) — it's just a simple credential check for local/demo purposes.
+### API Security
+
+-   CSRF protection
+-   Rate limiting ready
+-   Environment-based API documentation access
+-   Secure credential storage
+
+## Browser Support
+
+-   Chrome (latest)
+-   Firefox (latest)
+-   Safari (latest)
+-   Edge (latest)
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## License
+
+This project is private and proprietary.
+
+## Troubleshooting
+
+### Common Issues
+
+**Video generation fails:**
+
+-   Check your KIE_API_KEY is valid
+-   Ensure you have sufficient credits
+-   Verify your internet connection
+
+**Image upload fails:**
+
+-   Verify Cloudinary credentials are correct
+-   Check image size (max 10MB recommended)
+-   Ensure image format is supported (JPEG, PNG, WebP)
+
+**Authentication issues:**
+
+-   Clear browser cookies and try again
+-   Verify LOGIN_USER and LOGIN_PASS in .env
+-   Check if session has expired
+
+## Support
+
+For issues and questions:
+
+-   Check existing [API documentation](./api_doc.md)
+-   Review troubleshooting section above
+-   Open an issue in the repository
+
+---
+
+**Built with** Next.js, React, and AI

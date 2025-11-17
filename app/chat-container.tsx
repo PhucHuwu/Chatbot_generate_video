@@ -826,7 +826,7 @@ export function ChatContainer() {
                             >
                                 {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={() => setIsSettingsOpen(true)} title="Cài đặt API Keys">
+                            <Button size="sm" variant="ghost" onClick={() => setIsSettingsOpen(true)} title="Cài đặt">
                                 <Settings className="h-4 w-4" />
                             </Button>
                             <Button
@@ -1149,7 +1149,7 @@ export function ChatContainer() {
                         <div className="fixed inset-0 z-50 flex items-center justify-center">
                             <div className="absolute inset-0 bg-black/40" onClick={() => setIsSettingsOpen(false)} />
                             <div className="relative z-10 w-full max-w-lg bg-card border border-border rounded-md p-4">
-                                <h3 className="text-lg font-semibold mb-2">Cài đặt API Keys</h3>
+                                <h3 className="text-lg font-semibold mb-2">Cài đặt</h3>
                                 <p className="text-xs text-amber-600 mb-2">
                                     Lưu ý: API sẽ được lưu trên browser storage (localStorage). Chỉ nhập API Key miễn phí hoặc key mà bạn sẵn sàng để lộ.
                                 </p>
