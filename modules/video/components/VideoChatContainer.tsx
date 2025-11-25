@@ -31,6 +31,7 @@ export function VideoChatContainer() {
         fileName: string;
         size: number;
     } | null>(null);
+    const [isUploadingImage, setIsUploadingImage] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [settings, setSettings] = useState<Settings>({
         duration: "10",
@@ -185,7 +186,19 @@ export function VideoChatContainer() {
             : undefined;
         setUploadedImage(null);
         setInput("");
+
+        // Tạo processing message TRƯỚC KHI gọi API để người dùng thấy ngay
+        const tempId = (Date.now() + 1).toString();
+        const processingMessage: Message = {
+            id: tempId,
+            text: "Đang tạo video — quá trình có thể mất khoảng 3 - 5 phút. Vui lòng không đóng hay tải lại trang này",
+            sender: "bot",
+            timestamp: new Date(),
+            processing: true,
+        };
+        setMessages((prev) => [...prev, processingMessage]);
         setIsLoading(true);
+        setIsProcessing(true);
 
         try {
             const body: any = { prompt: input };
@@ -248,223 +261,160 @@ export function VideoChatContainer() {
                     sender: "bot",
                     timestamp: new Date(),
                 };
-                setMessages((prev) => [...prev, botMessage]);
+                // Thay thế processing message bằng error message
+                setMessages((prev) => prev.map((m) => (m.id === tempId ? botMessage : m)));
                 setIsLoading(false);
+                setIsProcessing(false);
                 return;
             }
 
             const data = await response.json();
 
-            if (Array.isArray(data?.resultUrls) && data.resultUrls.length > 0) {
-                const videoUrl = data.resultUrls[0];
-                const botMessage: Message = {
-                    id: (Date.now() + 1).toString(),
-                    text: "Video đã tạo xong",
-                    media: { src: videoUrl, type: "video" },
-                    sender: "bot",
-                    timestamp: new Date(),
-                };
-                setMessages((prev) => [...prev, botMessage]);
-                setIsProcessing(false);
-            } else if (data?.taskId) {
-                const tempId = (Date.now() + 1).toString();
-                const processingMessage: Message = {
+            // API luôn trả về taskId (theo KIE flow)
+            if (!data?.taskId) {
+                const errorMessage: Message = {
                     id: tempId,
-                    text: "Đang tạo video — quá trình có thể mất khoảng 3 - 5 phút. Vui lòng chờ trong giây lát. Vui lòng không đóng hay tải lại trang này",
-                    sender: "bot",
-                    timestamp: new Date(),
-                    processing: true,
-                };
-                setMessages((prev) => [...prev, processingMessage]);
-                setIsProcessing(true);
-
-                (async () => {
-                    const maxChecks = 60;
-                    const intervalMs = 3000;
-                    for (let i = 0; i < maxChecks; i++) {
-                        try {
-                            const statusRes = await fetch(`/api/video/generate/status?taskId=${encodeURIComponent(data.taskId)}`);
-                            if (!statusRes.ok) {
-                                await new Promise((r) => setTimeout(r, intervalMs));
-                                continue;
-                            }
-                            const statusData = await statusRes.json();
-                            function extractResultUrls(obj: any): string[] | undefined {
-                                if (!obj) return undefined;
-                                if (Array.isArray(obj.resultUrls) && obj.resultUrls.length) return obj.resultUrls;
-                                try {
-                                    const rj = obj?.raw?.data?.resultJson;
-                                    if (rj) {
-                                        const parsed = typeof rj === "string" ? JSON.parse(rj) : rj;
-                                        if (Array.isArray(parsed?.resultUrls) && parsed.resultUrls.length) return parsed.resultUrls;
-                                    }
-                                } catch (e) {}
-                                if (Array.isArray(obj?.raw?.resultUrls) && obj.raw.resultUrls.length) return obj.raw.resultUrls;
-                                if (Array.isArray(obj?.data?.resultUrls) && obj.data.resultUrls.length) return obj.data.resultUrls;
-                                return undefined;
-                            }
-
-                            const resultUrls = extractResultUrls(statusData);
-
-                            if (Array.isArray(resultUrls) && resultUrls.length > 0) {
-                                const videoUrl = resultUrls[0];
-                                const finishedMessage: Message = {
-                                    id: (Date.now() + 2).toString(),
-                                    text: "Video đã tạo xong",
-                                    media: { src: videoUrl, type: "video" },
-                                    sender: "bot",
-                                    timestamp: new Date(),
-                                };
-
-                                setMessages((prev) => {
-                                    const found = prev.some((m) => m.id === tempId);
-                                    if (found) return prev.map((m) => (m.id === tempId ? finishedMessage : m));
-                                    return [...prev, finishedMessage];
-                                });
-                                setIsProcessing(false);
-                                return;
-                            }
-
-                            if (statusData?.state === "fail" || statusData?.state === "failed") {
-                                const failMsg =
-                                    statusData?.raw?.data?.failMsg ||
-                                    statusData?.failMsg ||
-                                    statusData?.raw?.failMsg ||
-                                    "Quá trình tạo video thất bại. Vui lòng thử lại với mô tả khác.";
-
-                                const failMessage: Message = {
-                                    id: (Date.now() + 2).toString(),
-                                    text: `Lỗi: ${failMsg}`,
-                                    sender: "bot",
-                                    timestamp: new Date(),
-                                };
-
-                                setMessages((prev) => {
-                                    const found = prev.some((m) => m.id === tempId);
-                                    if (found) return prev.map((m) => (m.id === tempId ? failMessage : m));
-                                    return [...prev, failMessage];
-                                });
-                                setIsProcessing(false);
-                                return;
-                            }
-                        } catch (err) {}
-                        await new Promise((r) => setTimeout(r, intervalMs));
-                    }
-
-                    setMessages((prev) =>
-                        prev.map((m) =>
-                            m.id === tempId
-                                ? {
-                                      ...m,
-                                      text: "Quá trình tạo video đang mất nhiều thời gian hơn dự kiến. Đang tiếp tục kiểm tra. Vui lòng không đóng hay tải lại trang này",
-                                      taskId: data.taskId,
-                                      processing: true,
-                                  }
-                                : m
-                        )
-                    );
-
-                    const extendedMaxChecks = 36;
-                    const extendedIntervalMs = 5000;
-                    for (let i = 0; i < extendedMaxChecks; i++) {
-                        try {
-                            const statusRes = await fetch(`/api/video/generate/status?taskId=${encodeURIComponent(data.taskId)}`);
-                            if (!statusRes.ok) {
-                                await new Promise((r) => setTimeout(r, extendedIntervalMs));
-                                continue;
-                            }
-                            const statusData = await statusRes.json();
-                            function extractResultUrls(obj: any): string[] | undefined {
-                                if (!obj) return undefined;
-                                if (Array.isArray(obj.resultUrls) && obj.resultUrls.length) return obj.resultUrls;
-                                try {
-                                    const rj = obj?.raw?.data?.resultJson;
-                                    if (rj) {
-                                        const parsed = typeof rj === "string" ? JSON.parse(rj) : rj;
-                                        if (Array.isArray(parsed?.resultUrls) && parsed.resultUrls.length) return parsed.resultUrls;
-                                    }
-                                } catch (e) {}
-                                if (Array.isArray(obj?.raw?.resultUrls) && obj.raw.resultUrls.length) return obj.raw.resultUrls;
-                                if (Array.isArray(obj?.data?.resultUrls) && obj.data.resultUrls.length) return obj.data.resultUrls;
-                                return undefined;
-                            }
-
-                            const resultUrls = extractResultUrls(statusData);
-
-                            if (Array.isArray(resultUrls) && resultUrls.length > 0) {
-                                const videoUrl = resultUrls[0];
-                                const finishedMessage: Message = {
-                                    id: (Date.now() + 2).toString(),
-                                    text: "Video đã tạo xong",
-                                    media: { src: videoUrl, type: "video" },
-                                    sender: "bot",
-                                    timestamp: new Date(),
-                                };
-
-                                setMessages((prev) => {
-                                    const found = prev.some((m) => m.id === tempId);
-                                    if (found) return prev.map((m) => (m.id === tempId ? finishedMessage : m));
-                                    return [...prev, finishedMessage];
-                                });
-                                setIsProcessing(false);
-                                return;
-                            }
-
-                            if (statusData?.state === "fail" || statusData?.state === "failed") {
-                                const failMsg =
-                                    statusData?.raw?.data?.failMsg ||
-                                    statusData?.failMsg ||
-                                    statusData?.raw?.failMsg ||
-                                    "Quá trình tạo video thất bại. Vui lòng thử lại với mô tả khác.";
-
-                                const failMessage: Message = {
-                                    id: (Date.now() + 2).toString(),
-                                    text: `Lỗi: ${failMsg}`,
-                                    sender: "bot",
-                                    timestamp: new Date(),
-                                };
-
-                                setMessages((prev) => {
-                                    const found = prev.some((m) => m.id === tempId);
-                                    if (found) return prev.map((m) => (m.id === tempId ? failMessage : m));
-                                    return [...prev, failMessage];
-                                });
-                                setIsProcessing(false);
-                                return;
-                            }
-                        } catch (err) {}
-                        await new Promise((r) => setTimeout(r, extendedIntervalMs));
-                    }
-
-                    setMessages((prev) =>
-                        prev.map((m) =>
-                            m.id === tempId
-                                ? {
-                                      ...m,
-                                      text: "Quá trình tạo video mất quá lâu. Vui lòng thử lại sau hoặc liên hệ hỗ trợ.",
-                                  }
-                                : m
-                        )
-                    );
-                    setIsProcessing(false);
-                })();
-            } else if (data?.error) {
-                const botMessage: Message = {
-                    id: (Date.now() + 1).toString(),
-                    text: `Lỗi: ${data.error}`,
+                    text: "Lỗi: Không nhận được taskId từ server",
                     sender: "bot",
                     timestamp: new Date(),
                 };
-                setMessages((prev) => [...prev, botMessage]);
-            } else {
-                const botMessage: Message = {
-                    id: (Date.now() + 1).toString(),
-                    text: "Không có kết quả trả về",
-                    sender: "bot",
-                    timestamp: new Date(),
-                };
-                setMessages((prev) => [...prev, botMessage]);
+                setMessages((prev) => prev.map((m) => (m.id === tempId ? errorMessage : m)));
+                setIsProcessing(false);
+                setIsLoading(false);
+                return;
             }
+
+            // Bắt đầu polling ngay với taskId
+            setIsLoading(false);
+
+            (async () => {
+                const TIMEOUT_MS = 5 * 60 * 1000; // 5 phút
+                const POLL_INTERVAL_MS = 3000; // 3 giây
+                const startTime = Date.now();
+                const maxChecks = Math.floor(TIMEOUT_MS / POLL_INTERVAL_MS);
+
+                // Helper function để extract video URL từ response
+                const extractVideoUrl = (obj: any): string | null => {
+                    // Kiểm tra resultUrls trực tiếp
+                    if (Array.isArray(obj?.resultUrls) && obj.resultUrls.length > 0) {
+                        return obj.resultUrls[0];
+                    }
+
+                    // Kiểm tra trong raw.data.resultJson
+                    try {
+                        const resultJson = obj?.raw?.data?.resultJson;
+                        if (resultJson) {
+                            const parsed = typeof resultJson === "string" ? JSON.parse(resultJson) : resultJson;
+                            if (Array.isArray(parsed?.resultUrls) && parsed.resultUrls.length > 0) {
+                                return parsed.resultUrls[0];
+                            }
+                        }
+                    } catch (e) {}
+
+                    // Kiểm tra các vị trí khác
+                    if (Array.isArray(obj?.raw?.resultUrls) && obj.raw.resultUrls.length > 0) {
+                        return obj.raw.resultUrls[0];
+                    }
+                    if (Array.isArray(obj?.data?.resultUrls) && obj.data.resultUrls.length > 0) {
+                        return obj.data.resultUrls[0];
+                    }
+
+                    return null;
+                };
+
+                // Polling loop
+                for (let i = 0; i < maxChecks; i++) {
+                    const elapsed = Date.now() - startTime;
+
+                    // Kiểm tra timeout
+                    if (elapsed >= TIMEOUT_MS) {
+                        setMessages((prev) =>
+                            prev.map((m) =>
+                                m.id === tempId
+                                    ? {
+                                          ...m,
+                                          text: "Lỗi: Quá trình tạo video vượt quá 5 phút. Vui lòng thử lại sau.",
+                                          processing: false,
+                                      }
+                                    : m
+                            )
+                        );
+                        setIsProcessing(false);
+                        return;
+                    }
+
+                    // Gọi API kiểm tra status
+                    try {
+                        const statusRes = await fetch(`/api/video/generate/status?taskId=${encodeURIComponent(data.taskId)}`);
+
+                        if (statusRes.ok) {
+                            const statusData = await statusRes.json();
+
+                            // Kiểm tra nếu có video
+                            const videoUrl = extractVideoUrl(statusData);
+                            if (videoUrl) {
+                                setMessages((prev) =>
+                                    prev.map((m) =>
+                                        m.id === tempId
+                                            ? {
+                                                  id: tempId,
+                                                  text: "Video đã tạo xong",
+                                                  media: { src: videoUrl, type: "video" },
+                                                  sender: "bot",
+                                                  timestamp: new Date(),
+                                              }
+                                            : m
+                                    )
+                                );
+                                setIsProcessing(false);
+                                return;
+                            }
+
+                            // Kiểm tra nếu failed
+                            if (statusData?.state === "fail" || statusData?.state === "failed") {
+                                const failMsg =
+                                    statusData?.raw?.data?.failMsg ||
+                                    statusData?.failMsg ||
+                                    statusData?.raw?.failMsg ||
+                                    "Quá trình tạo video thất bại. Vui lòng thử lại với mô tả khác.";
+
+                                setMessages((prev) =>
+                                    prev.map((m) =>
+                                        m.id === tempId
+                                            ? {
+                                                  ...m,
+                                                  text: `Lỗi: ${failMsg}`,
+                                                  processing: false,
+                                              }
+                                            : m
+                                    )
+                                );
+                                setIsProcessing(false);
+                                return;
+                            }
+                        }
+                    } catch (err) {
+                        // Bỏ qua lỗi network, tiếp tục polling
+                    }
+
+                    // Chờ trước khi poll lần tiếp theo
+                    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+                }
+
+                // Hết thời gian timeout
+                setMessages((prev) =>
+                    prev.map((m) =>
+                        m.id === tempId
+                            ? {
+                                  ...m,
+                                  text: "Lỗi: Quá trình tạo video vượt quá 5 phút. Vui lòng thử lại sau.",
+                                  processing: false,
+                              }
+                            : m
+                    )
+                );
+                setIsProcessing(false);
+            })();
         } catch (error: any) {
             console.error("Error sending message:", error);
             let friendly = (error && error.message) || "Không nhận được phản hồi từ dịch vụ.";
@@ -518,16 +468,23 @@ export function VideoChatContainer() {
             return;
         }
 
-        setIsLoading(true);
+        setIsUploadingImage(true);
 
         try {
-            // Read file as base64
+            // Read file as base64 and show preview immediately
             const reader = new FileReader();
             reader.onload = async (event) => {
                 const base64String = event.target?.result as string;
 
+                // Hiển thị preview ngay lập tức với base64
+                setUploadedImage({
+                    src: base64String,
+                    fileName: file.name,
+                    size: file.size,
+                });
+
                 try {
-                    // Upload to Cloudinary
+                    // Upload to Cloudinary in background
                     const uploadRes = await fetch("/api/upload/image", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -541,24 +498,26 @@ export function VideoChatContainer() {
 
                     const { url } = await uploadRes.json();
 
-                    // Store Cloudinary URL instead of base64
+                    // Cập nhật với Cloudinary URL sau khi upload xong
                     setUploadedImage({
                         src: url,
                         fileName: file.name,
                         size: file.size,
                     });
-                    setIsLoading(false);
+                    setIsUploadingImage(false);
                 } catch (uploadError: any) {
                     console.error("Cloudinary upload error:", uploadError);
                     alert(`Lỗi khi upload ảnh: ${uploadError.message || "Vui lòng thử lại"}`);
-                    setIsLoading(false);
+                    // Xóa preview nếu upload thất bại
+                    setUploadedImage(null);
+                    setIsUploadingImage(false);
                 }
             };
             reader.readAsDataURL(file);
         } catch (error) {
             console.error("Error processing image:", error);
             alert("Lỗi khi xử lý ảnh. Vui lòng thử lại.");
-            setIsLoading(false);
+            setIsUploadingImage(false);
         }
 
         if (fileInputRef.current) {
@@ -758,6 +717,7 @@ export function VideoChatContainer() {
                 }}
                 onSend={handleSendMessage}
                 isLoading={isLoading}
+                isUploadingImage={isUploadingImage}
                 isGeneratingPrompt={isGeneratingPrompt}
                 onGeneratePrompt={handleGeneratePrompt}
                 onSettingsClick={() => setIsSettingsOpen(true)}

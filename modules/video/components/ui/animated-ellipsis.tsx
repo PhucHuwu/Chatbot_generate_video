@@ -1,16 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
+import { cn } from "@/lib/utils";
 
-export function AnimatedEllipsis({ interval = 400 }: { interval?: number }) {
-    const [count, setCount] = useState(0);
-    useEffect(() => {
-        const t = window.setInterval(() => {
-            setCount((c) => (c + 1) % 4);
-        }, interval);
-        return () => clearInterval(t);
-    }, [interval]);
+export function AnimatedEllipsis({ className }: { className?: string }) {
     return (
-        <span aria-hidden className="inline-block w-6">
-            {".".repeat(count)}
+        <span className={cn("inline-flex gap-1 ml-1", className)} aria-label="Loading">
+            <span className="animate-bounce [animation-delay:0ms] opacity-60">.</span>
+            <span className="animate-bounce [animation-delay:150ms] opacity-60">.</span>
+            <span className="animate-bounce [animation-delay:300ms] opacity-60">.</span>
         </span>
     );
 }

@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Send, Upload, Trash, Sparkles } from "lucide-react";
+import { Send, Upload, Trash, Sparkles, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect } from "react";
 
@@ -11,6 +11,7 @@ interface InputAreaProps {
     onClearImage?: () => void;
     onSend: (e: React.FormEvent) => void;
     isLoading: boolean;
+    isUploadingImage?: boolean;
     isGeneratingPrompt?: boolean;
     onGeneratePrompt?: () => void;
     onSettingsClick?: () => void;
@@ -27,6 +28,7 @@ export function InputArea({
     onClearImage,
     onSend,
     isLoading,
+    isUploadingImage,
     isGeneratingPrompt,
     onGeneratePrompt,
     onSettingsClick,
@@ -66,12 +68,30 @@ export function InputArea({
                     <div className="mb-4 flex items-center gap-4 rounded-lg border border-border bg-muted/30 p-3 animate-in slide-in-from-bottom-2">
                         <div className="relative h-16 w-16 overflow-hidden rounded-md border border-border">
                             <img src={uploadedImage.src} alt="Preview" className="h-full w-full object-cover" />
+                            {/* Loading overlay khi đang upload */}
+                            {isUploadingImage && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+                                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                                </div>
+                            )}
                         </div>
                         <div className="flex-1 overflow-hidden">
                             <p className="truncate text-sm font-medium">{uploadedImage.fileName}</p>
-                            <p className="text-xs text-muted-foreground">{(uploadedImage.size / 1024 / 1024).toFixed(2)} MB</p>
+                            <p className="text-xs text-muted-foreground">
+                                {isUploadingImage ? (
+                                    <span className="text-primary">Đang tải lên...</span>
+                                ) : (
+                                    `${(uploadedImage.size / 1024 / 1024).toFixed(2)} MB`
+                                )}
+                            </p>
                         </div>
-                        <Button variant="ghost" size="icon" onClick={onClearImage} className="text-muted-foreground hover:text-destructive">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={onClearImage}
+                            className="text-muted-foreground hover:text-destructive"
+                            disabled={isUploadingImage}
+                        >
                             <Trash className="h-4 w-4" />
                         </Button>
                     </div>
@@ -108,11 +128,11 @@ export function InputArea({
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                className="absolute right-2 top-2 h-8 gap-1.5 text-xs text-muted-foreground hover:text-primary"
+                                className="absolute right-2 top-2 h-8 gap-1.5 text-xs bg-gradient-to-r from-[#8AB4F8] via-[#C58AF9] to-[#F48FB1] text-white hover:opacity-90 disabled:opacity-50"
                                 onClick={onGeneratePrompt}
                                 disabled={isGeneratingPrompt || isLoading}
                             >
-                                <Sparkles className={cn("h-3 w-3", isGeneratingPrompt && "animate-spin")} />
+                                <Sparkles className="h-3 w-3" />
                                 {isGeneratingPrompt ? "Đang tạo..." : "Gen Prompt"}
                             </Button>
                         )}

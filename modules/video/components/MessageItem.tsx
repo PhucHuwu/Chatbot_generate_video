@@ -13,6 +13,7 @@ export function MessageItem({ message }: MessageItemProps) {
     const isUser = message.sender === "user";
     const isBot = message.sender === "bot";
     const isError = message.text?.startsWith("Lỗi:");
+    const isProcessing = message.processing === true;
 
     return (
         <div className={cn("flex w-full flex-col gap-2", isUser ? "items-end" : "items-start")}>
@@ -23,6 +24,8 @@ export function MessageItem({ message }: MessageItemProps) {
                         ? "bg-primary text-primary-foreground rounded-br-none"
                         : isError
                         ? "bg-destructive/10 text-destructive border border-destructive/20 rounded-bl-none"
+                        : isProcessing
+                        ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-bl-none"
                         : "bg-muted/50 text-foreground border border-border/50 rounded-bl-none"
                 )}
             >
@@ -37,7 +40,7 @@ export function MessageItem({ message }: MessageItemProps) {
                 {message.text && (
                     <div className={cn("leading-relaxed whitespace-pre-wrap break-words", isError && "flex items-start gap-2 font-medium")}>
                         {isError && <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />}
-                        {message.text}
+                        <span>{message.text}</span>
                         {message.processing && <AnimatedEllipsis />}
                     </div>
                 )}
