@@ -16,8 +16,8 @@ export interface GenerateResult {
     groqOutput?: string;
 }
 
-import { describeImageWithGemini } from "./gemini-service";
-import { sendToGroq } from "./groq-service";
+import { describeImageWithGemini } from "@/modules/core/services/gemini-service";
+import { sendToGroq } from "@/modules/core/services/groq-service";
 
 const API_BASE = "https://api.kie.ai/api/v1/jobs";
 const API_KEY = process.env.KIE_API_KEY || "";

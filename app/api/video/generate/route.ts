@@ -1,6 +1,6 @@
 import "@/lib/early-warnings"; // register warning handler early to suppress known upstream deprecation warnings
 import { NextRequest, NextResponse } from "next/server";
-import generateMedia, { createTask } from "@/backend/generate-service";
+import generateMedia, { createTask } from "@/modules/video/services/video-generation.service";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
 
 // Quy tắc prompt chung: đảm bảo mặt nhân vật không bị cắt trong video.

@@ -1,6 +1,6 @@
 "use client";
-import { ChatContainer } from "@/app/chat-container";
+import { VideoChatContainer } from "@/modules/video/components/VideoChatContainer";
 
 export default function ChatPage() {
-    return <ChatContainer />;
+    return <VideoChatContainer />;
 }

@@ -1,7 +1,7 @@
 import "@/lib/early-warnings"; // keep consistent logging behavior
 import { NextRequest, NextResponse } from "next/server";
-import { describeImageWithGemini } from "@/backend/gemini-service";
-import { sendToGroq } from "@/backend/groq-service";
+import { describeImageWithGemini } from "@/modules/core/services/gemini-service";
+import { sendToGroq } from "@/modules/core/services/groq-service";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
 
 export async function POST(request: NextRequest) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchTaskInfo } from "@/backend/generate-service";
+import { fetchTaskInfo } from "@/modules/video/services/video-generation.service";
 
 export async function GET(request: NextRequest) {
     try {
