@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Sun, Moon, Settings as SettingsIcon, Trash, AlertTriangle } from "lucide-react";
+import { Sun, Moon, Settings as SettingsIcon, Trash, AlertTriangle, Image as ImageIcon } from "lucide-react";
 import { useTheme } from "@/components/theme-toggle-provider";
 import NativeConfirm from "@/components/ui/native-confirm";
 import { Message, Settings } from "@/modules/video/types";
@@ -683,9 +683,15 @@ export function VideoChatContainer() {
         <div className="flex flex-col h-screen bg-background">
             <header id="chat-header" className="border-b border-border bg-card p-4">
                 <div className="w-full flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold text-foreground hidden md:block">Chatbot tạo video</h1>
-                        <p className="text-sm text-muted-foreground hidden md:block">Tạo video từ mô tả văn bản và ảnh</p>
+                    <div className="flex items-center gap-4">
+                        <div>
+                            <h1 className="text-2xl font-bold text-foreground hidden md:block">Chatbot tạo video</h1>
+                            <p className="text-sm text-muted-foreground hidden md:block">Tạo video từ mô tả văn bản và ảnh</p>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => router.push("/image")} className="gap-2">
+                            <ImageIcon className="h-4 w-4" />
+                            <span className="hidden sm:inline">Chế độ Ảnh</span>
+                        </Button>
                     </div>
                     <div>
                         <div className="flex items-center gap-2">

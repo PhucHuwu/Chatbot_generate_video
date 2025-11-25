@@ -7,17 +7,17 @@ import { AnimatedEllipsis } from "./ui/animated-ellipsis";
 interface InputAreaProps {
     input: string;
     setInput: (val: string) => void;
-    uploadedImage: { src: string; fileName: string; size: number } | null;
-    onImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-    onClearImage: () => void;
+    uploadedImage?: { src: string; fileName: string; size: number } | null;
+    onImageUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onClearImage?: () => void;
     onSend: (e: React.FormEvent) => void;
     isLoading: boolean;
-    isGeneratingPrompt: boolean;
-    onGeneratePrompt: () => void;
-    onSettingsClick: () => void;
-    fileInputRef: React.RefObject<HTMLInputElement | null>;
+    isGeneratingPrompt?: boolean;
+    onGeneratePrompt?: () => void;
+    onSettingsClick?: () => void;
+    fileInputRef?: React.RefObject<HTMLInputElement | null>;
     textareaRef: React.RefObject<HTMLTextAreaElement | null>;
-    credits: number | null;
+    credits?: number | null;
 }
 
 export function InputArea({
@@ -46,7 +46,7 @@ export function InputArea({
         <div className="border-t border-border bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="mx-auto max-w-3xl">
                 {/* Image Preview */}
-                {uploadedImage && (
+                {uploadedImage && onClearImage && (
                     <div className="mb-4 flex items-center gap-4 rounded-lg border border-border bg-muted/30 p-3 animate-in slide-in-from-bottom-2">
                         <div className="relative h-16 w-16 overflow-hidden rounded-md border border-border">
                             <img src={uploadedImage.src} alt="Preview" className="h-full w-full object-cover" />
@@ -63,16 +63,18 @@ export function InputArea({
 
                 <form onSubmit={onSend} className="relative flex gap-3 items-end">
                     <input type="file" ref={fileInputRef} onChange={onImageUpload} accept="image/*" className="hidden" />
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        className="h-12 w-12 shrink-0 rounded-xl"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isLoading}
-                    >
-                        <Upload className="h-5 w-5" />
-                    </Button>
+                    {onImageUpload && fileInputRef && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-12 w-12 shrink-0 rounded-xl"
+                            onClick={() => fileInputRef?.current?.click()}
+                            disabled={isLoading}
+                        >
+                            <Upload className="h-5 w-5" />
+                        </Button>
+                    )}
 
                     <div className="relative flex-1">
                         <textarea
@@ -85,7 +87,7 @@ export function InputArea({
                             rows={1}
                             disabled={isLoading}
                         />
-                        {uploadedImage && !input && (
+                        {uploadedImage && !input && onGeneratePrompt && (
                             <Button
                                 type="button"
                                 variant="ghost"
@@ -104,16 +106,6 @@ export function InputArea({
                         <Send className="h-5 w-5" />
                     </Button>
                 </form>
-
-                <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground px-1">
-                    <div className="flex items-center gap-2">
-                        <span>{credits !== null ? `Credits: ${credits}` : "Đang tải credits..."}</span>
-                    </div>
-                    <Button variant="ghost" size="sm" className="h-auto p-0 hover:bg-transparent" onClick={onSettingsClick}>
-                        <Settings className="mr-1 h-3 w-3" />
-                        Cài đặt
-                    </Button>
-                </div>
             </div>
         </div>
     );

@@ -100,6 +100,24 @@ export function MessageItem({ message, onToggleThinking }: MessageItemProps) {
                         </Button>
                     </div>
                 )}
+
+                {/* Image Attachment (Result) */}
+                {message.media && message.media.type === "image" && (
+                    <div className="mt-3 space-y-2">
+                        <div className="relative overflow-hidden rounded-lg border border-border bg-background/50">
+                            <img src={message.media.src} alt="Generated" className="max-h-96 w-full object-contain" />
+                        </div>
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            className="w-full gap-2 bg-background/80 hover:bg-background shadow-sm transition-all"
+                            onClick={() => message.media && downloadMedia(message.media.src)}
+                        >
+                            <Download className="h-4 w-4" />
+                            Tải ảnh xuống
+                        </Button>
+                    </div>
+                )}
             </div>
             <div className="px-1 text-[10px] text-muted-foreground/60">
                 {`${message.timestamp.getDate().toString().padStart(2, "0")}/${(message.timestamp.getMonth() + 1)
