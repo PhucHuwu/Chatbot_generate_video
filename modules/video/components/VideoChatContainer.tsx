@@ -630,7 +630,7 @@ export function VideoChatContainer() {
                 <div className="w-full flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div>
-                            <h1 className="text-2xl font-bold text-foreground hidden md:block">Chatbot tạo video</h1>
+                            <h1 className="text-2xl font-bold text-foreground hidden md:block">Chatbot tạo Video/Ảnh</h1>
                             <p className="text-sm text-muted-foreground hidden md:block">Tạo video từ mô tả văn bản và ảnh</p>
                         </div>
                         <ModeToggle currentMode="video" onToggle={() => router.push("/image")} />
