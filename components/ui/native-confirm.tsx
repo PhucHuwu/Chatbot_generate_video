@@ -12,6 +12,7 @@ interface NativeConfirmProps {
     cancelLabel?: string;
     onConfirm: () => void;
     onCancel: () => void;
+    id?: string;
 }
 
 export default function NativeConfirm({
@@ -22,11 +23,12 @@ export default function NativeConfirm({
     cancelLabel = "Hủy",
     onConfirm,
     onCancel,
+    id,
 }: NativeConfirmProps) {
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div id={id} className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="absolute inset-0 bg-black/40" onClick={onCancel} />
             <div className="relative z-10 w-full max-w-lg bg-card border border-border rounded-md p-4">
                 <div className="flex items-start gap-3">
@@ -39,10 +41,15 @@ export default function NativeConfirm({
                     </div>
                 </div>
                 <div className="flex justify-end gap-2">
-                    <Button variant="ghost" onClick={onCancel}>
+                    <Button id={id ? `${id}-cancel-btn` : undefined} variant="ghost" onClick={onCancel}>
                         {cancelLabel}
                     </Button>
-                    <Button variant="destructive" className="bg-red-500 hover:bg-red-400 dark:bg-red-500 dark:hover:bg-red-400 text-white" onClick={onConfirm}>
+                    <Button
+                        id={id ? `${id}-confirm-btn` : undefined}
+                        variant="destructive"
+                        className="bg-red-500 hover:bg-red-400 dark:bg-red-500 dark:hover:bg-red-400 text-white"
+                        onClick={onConfirm}
+                    >
                         {confirmLabel}
                     </Button>
                 </div>

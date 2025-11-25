@@ -78,10 +78,11 @@ export default function LoginPage() {
         <main className="min-h-screen flex items-center justify-center bg-background">
             <div className="w-full max-w-md p-8 border border-border bg-card rounded-lg shadow-sm">
                 <h1 className="text-2xl font-bold text-foreground mb-4">Đăng nhập</h1>
-                <form onSubmit={handleSubmit}>
+                <form id="login-form" onSubmit={handleSubmit}>
                     <label className="block mb-2">
                         <span className="text-sm text-muted-foreground">Tên đăng nhập</span>
                         <input
+                            id="login-username-input"
                             type="text"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
@@ -93,6 +94,7 @@ export default function LoginPage() {
                     <label className="block mb-4">
                         <span className="text-sm text-muted-foreground">Mật khẩu</span>
                         <input
+                            id="login-password-input"
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
@@ -103,7 +105,7 @@ export default function LoginPage() {
 
                     {error && <div className="text-red-600 mb-2">{error}</div>}
 
-                    <button type="submit" className="w-full bg-primary text-primary-foreground px-4 py-2 rounded" disabled={loading}>
+                    <button id="login-submit-btn" type="submit" className="w-full bg-primary text-primary-foreground px-4 py-2 rounded" disabled={loading}>
                         {loading ? "Đang đăng nhập..." : "Đăng nhập"}
                     </button>
                 </form>

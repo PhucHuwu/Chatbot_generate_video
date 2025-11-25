@@ -803,7 +803,7 @@ export function ChatContainer() {
     return (
         <div className="flex flex-col h-screen bg-background">
             {/* Header */}
-            <header className="border-b border-border bg-card p-4">
+            <header id="chat-header" className="border-b border-border bg-card p-4">
                 <div className="max-w-4xl mx-auto flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold text-foreground">Chatbot tạo video</h1>
@@ -812,6 +812,7 @@ export function ChatContainer() {
                     <div>
                         <div className="flex items-center gap-2">
                             <Button
+                                id="btn-fetch-credits"
                                 size="sm"
                                 variant="ghost"
                                 onClick={fetchCredits}
@@ -849,6 +850,7 @@ export function ChatContainer() {
                             </Button>
 
                             <Button
+                                id="btn-theme-toggle"
                                 size="sm"
                                 variant="ghost"
                                 onClick={toggleTheme}
@@ -856,10 +858,11 @@ export function ChatContainer() {
                             >
                                 {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={() => setIsSettingsOpen(true)} title="Cài đặt">
+                            <Button id="btn-settings" size="sm" variant="ghost" onClick={() => setIsSettingsOpen(true)} title="Cài đặt">
                                 <Settings className="h-4 w-4" />
                             </Button>
                             <Button
+                                id="btn-clear-history"
                                 size="sm"
                                 variant="ghost"
                                 onClick={clearHistory}
@@ -869,6 +872,7 @@ export function ChatContainer() {
                                 <Trash className="h-4 w-4" />
                             </Button>
                             <Button
+                                id="btn-logout"
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => setIsLogoutConfirmOpen(true)}
@@ -883,10 +887,10 @@ export function ChatContainer() {
             </header>
 
             {/* Messages Container */}
-            <main className="flex-1 overflow-y-auto">
+            <main id="chat-messages-container" className="flex-1 overflow-y-auto">
                 <div className="max-w-4xl mx-auto p-4 space-y-4">
                     {isClient && messages.length === 0 && (
-                        <div className="flex flex-col items-center justify-center h-full pt-20 text-center">
+                        <div id="chat-empty-state" className="flex flex-col items-center justify-center h-full pt-20 text-center">
                             <div className="text-muted-foreground space-y-2">
                                 <p className="text-lg font-medium">Chào mừng đến với Chatbot tạo video</p>
                                 <p className="text-sm">Nhập mô tả để bắt đầu tạo video</p>
@@ -904,7 +908,7 @@ export function ChatContainer() {
                         // If user message contains both image and text, render two separate bubbles (stacked vertically)
                         if (isUser && message.image && message.text) {
                             return (
-                                <div key={message.id} className={`flex ${containerJustify}`}>
+                                <div id={`chat-message-${message.id}`} key={message.id} className={`flex ${containerJustify}`}>
                                     <div className="max-w-xs lg:max-w-md flex flex-col items-end gap-2">
                                         {/* Image bubble */}
                                         <div className={`px-4 py-2 rounded-lg ${bubbleClass}`}>
@@ -938,7 +942,7 @@ export function ChatContainer() {
 
                         // Default rendering (single bubble) for other cases
                         return (
-                            <div key={message.id} className={`flex ${containerJustify}`}>
+                            <div id={`chat-message-${message.id}`} key={message.id} className={`flex ${containerJustify}`}>
                                 <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${bubbleClass}`}>
                                     {message.image && (
                                         <div className="mb-2">
@@ -1011,7 +1015,7 @@ export function ChatContainer() {
                     })}
 
                     {isLoading && (
-                        <div className="flex justify-start">
+                        <div id="chat-bot-loading" className="flex justify-start">
                             <div className="bg-card border border-border text-foreground px-4 py-2 rounded-lg rounded-bl-none">
                                 <div className="flex gap-1">
                                     <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
@@ -1027,12 +1031,12 @@ export function ChatContainer() {
             </main>
 
             {/* Input Area */}
-            <footer className="border-t border-border bg-card p-4">
+            <footer id="chat-footer" className="border-t border-border bg-card p-4">
                 <div className="max-w-4xl mx-auto">
                     {/* delete button moved to header next to theme toggle */}
                     {/* Uploaded image preview shown above input (not as a sent message) */}
                     {uploadedImage && (
-                        <div className="mb-2 flex items-center gap-3">
+                        <div id="chat-upload-preview" className="mb-2 flex items-center gap-3">
                             <img src={uploadedImage.src} alt={uploadedImage.fileName} className="w-20 h-14 object-cover rounded" />
                             <div className="flex-1 text-sm">
                                 <div className="font-medium">{uploadedImage.fileName}</div>
@@ -1040,6 +1044,7 @@ export function ChatContainer() {
                             </div>
                             <div>
                                 <Button
+                                    id="btn-cancel-upload"
                                     size="sm"
                                     variant="ghost"
                                     onClick={() => {
@@ -1056,6 +1061,7 @@ export function ChatContainer() {
                     <form onSubmit={handleSendMessage} className="flex gap-2 items-center">
                         <div className="flex items-center">
                             <Button
+                                id="btn-upload-image"
                                 type="button"
                                 disabled={isLoading || isProcessing}
                                 size="icon"
@@ -1066,6 +1072,7 @@ export function ChatContainer() {
                                 <Upload className="w-4 h-4" />
                             </Button>
                             <input
+                                id="input-file-upload"
                                 ref={fileInputRef}
                                 type="file"
                                 accept="image/*"
@@ -1077,6 +1084,7 @@ export function ChatContainer() {
 
                         <div className="relative flex-1">
                             <textarea
+                                id="input-chat-message"
                                 ref={textareaRef}
                                 placeholder={isGeneratingPrompt ? "" : "Nhập mô tả (bắt buộc kèm ảnh)..."}
                                 value={input}
@@ -1110,6 +1118,7 @@ export function ChatContainer() {
 
                         <div className="flex flex-col items-center gap-2">
                             <Button
+                                id="btn-gen-prompt"
                                 size="sm"
                                 onClick={async () => {
                                     if (!uploadedImage) return;
@@ -1165,6 +1174,7 @@ export function ChatContainer() {
                             </Button>
 
                             <Button
+                                id="btn-send-message"
                                 type="submit"
                                 disabled={isLoading || isProcessing || isGeneratingPrompt || !uploadedImage || !input || input.trim() === ""}
                                 size="icon"
@@ -1176,7 +1186,7 @@ export function ChatContainer() {
                     </form>
                     {/* Settings modal */}
                     {isSettingsOpen && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center">
+                        <div id="modal-settings" className="fixed inset-0 z-50 flex items-center justify-center">
                             <div className="absolute inset-0 bg-black/40" onClick={() => setIsSettingsOpen(false)} />
                             <div className="relative z-10 w-full max-w-lg bg-card border border-border rounded-md p-4">
                                 <h3 className="text-lg font-semibold mb-2">Cài đặt</h3>
@@ -1187,6 +1197,7 @@ export function ChatContainer() {
                                     <div>
                                         <label className="text-xs">GEMINI_API_KEY</label>
                                         <Input
+                                            id="input-settings-gemini-key"
                                             value={settings.googleApiKey || ""}
                                             onChange={(e) =>
                                                 setSettings((s) => ({
@@ -1199,6 +1210,7 @@ export function ChatContainer() {
                                     <div>
                                         <label className="text-xs">OPENROUTER_API_KEY</label>
                                         <Input
+                                            id="input-settings-openrouter-key"
                                             value={settings.openrouterApiKey || ""}
                                             onChange={(e) =>
                                                 setSettings((s) => ({
@@ -1211,6 +1223,7 @@ export function ChatContainer() {
                                     <div>
                                         <label className="text-xs">GROQ_API_KEY</label>
                                         <Input
+                                            id="input-settings-groq-key"
                                             value={settings.groqApiKey || ""}
                                             onChange={(e) =>
                                                 setSettings((s) => ({
@@ -1223,6 +1236,7 @@ export function ChatContainer() {
                                     <div>
                                         <label className="text-xs font-medium block mb-2">Thời lượng video</label>
                                         <RadioGroup
+                                            id="radio-group-duration"
                                             value={settings.duration || "10"}
                                             onValueChange={(value: "5" | "10") =>
                                                 setSettings((s) => ({
@@ -1248,6 +1262,7 @@ export function ChatContainer() {
                                 </div>
                                 <div className="mt-4 flex justify-end gap-2">
                                     <Button
+                                        id="btn-cancel-settings"
                                         variant="ghost"
                                         onClick={() => {
                                             // revert to persisted values
@@ -1271,6 +1286,7 @@ export function ChatContainer() {
                                         Hủy
                                     </Button>
                                     <Button
+                                        id="btn-save-settings"
                                         onClick={() => {
                                             try {
                                                 localStorage.setItem("api_keys_v1", JSON.stringify(settings || {}));
@@ -1288,6 +1304,7 @@ export function ChatContainer() {
                     )}
                     {isConfirmOpen && (
                         <NativeConfirm
+                            id="modal-confirm-clear-history"
                             open={isConfirmOpen}
                             title="Xóa lịch sử chat"
                             description="Bạn có chắc muốn xóa toàn bộ lịch sử chat? Hành động này không thể hoàn tác."
@@ -1299,6 +1316,7 @@ export function ChatContainer() {
                     )}
                     {isLogoutConfirmOpen && (
                         <NativeConfirm
+                            id="modal-confirm-logout"
                             open={isLogoutConfirmOpen}
                             title="Đăng xuất"
                             description="Bạn có chắc muốn đăng xuất khỏi tài khoản hiện tại? Bạn sẽ cần đăng nhập lại để tiếp tục."
