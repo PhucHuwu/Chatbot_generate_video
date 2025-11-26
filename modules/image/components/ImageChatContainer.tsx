@@ -227,7 +227,7 @@ export function ImageChatContainer() {
         <div className="flex flex-col h-screen bg-background">
             <header className="border-b border-border bg-card p-4">
                 <div className="w-full flex items-center justify-between">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-0 md:gap-4">
                         <div>
                             <h1 className="text-2xl font-bold text-foreground hidden md:block">Chatbot tạo Video/Ảnh</h1>
                             <p className="text-sm text-muted-foreground hidden md:block">Tạo ảnh từ mô tả văn bản</p>
