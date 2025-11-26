@@ -21,8 +21,6 @@ export function VideoChatContainer() {
     const [creditsError, setCreditsError] = useState<string | null>(null);
     const [isClient, setIsClient] = useState(false);
     const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
-
-    const STORAGE_KEY = "chat_history_v1";
     const [messages, setMessages] = useState<Message[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [input, setInput] = useState("");
