@@ -21,7 +21,6 @@ export function ImageChatContainer() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
-    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
     const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
     const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
     const [hasMoreHistory, setHasMoreHistory] = useState(false);
@@ -247,18 +246,6 @@ export function ImageChatContainer() {
         }
     };
 
-    const clearHistory = () => {
-        setIsConfirmOpen(true);
-    };
-
-    const doClearHistory = () => {
-        setMessages([]);
-        try {
-            fetch("/api/chat/history?type=image", { method: "DELETE" });
-        } catch (e) {}
-        setIsConfirmOpen(false);
-    };
-
     const doLogout = async () => {
         if (isLoading) {
             setIsLogoutConfirmOpen(false);
@@ -306,9 +293,6 @@ export function ImageChatContainer() {
                             >
                                 {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={clearHistory} disabled={messages.length === 0 || isLoading} title="Xóa lịch sử chat">
-                                <Trash className="h-4 w-4" />
-                            </Button>
                             <Button
                                 size="sm"
                                 variant="ghost"
@@ -346,15 +330,6 @@ export function ImageChatContainer() {
                     onRandomPrompt={handleRandomPrompt}
                 />
 
-                <NativeConfirm
-                    open={isConfirmOpen}
-                    title="Xóa lịch sử chat"
-                    description="Bạn có chắc muốn xóa toàn bộ lịch sử chat? Hành động này không thể hoàn tác."
-                    confirmLabel="Xóa"
-                    cancelLabel="Hủy"
-                    onConfirm={doClearHistory}
-                    onCancel={() => setIsConfirmOpen(false)}
-                />
                 <NativeConfirm
                     open={isLogoutConfirmOpen}
                     title="Đăng xuất"

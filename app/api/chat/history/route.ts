@@ -127,27 +127,3 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Failed to save message" }, { status: 500 });
     }
 }
-
-export async function DELETE(req: NextRequest) {
-    if (!checkAuth(req)) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(req.url);
-    const type = searchParams.get("type");
-
-    if (!type) {
-        return NextResponse.json({ error: "Type is required" }, { status: 400 });
-    }
-
-    try {
-        await prisma.chatMessage.deleteMany({
-            where: { type },
-        });
-
-        return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error("Failed to delete chat history:", error);
-        return NextResponse.json({ error: "Failed to delete chat history" }, { status: 500 });
-    }
-}

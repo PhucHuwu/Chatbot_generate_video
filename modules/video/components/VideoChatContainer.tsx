@@ -41,7 +41,6 @@ export function VideoChatContainer() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
     const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
     const [hasMoreHistory, setHasMoreHistory] = useState(false);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -698,15 +697,6 @@ export function VideoChatContainer() {
         }
     };
 
-    const doClearHistory = () => {
-        setMessages([]);
-        try {
-            fetch("/api/chat/history?type=video", { method: "DELETE" });
-        } catch (e) {}
-        setHasLoadedHistory(true);
-        setIsConfirmOpen(false);
-    };
-
     const doLogout = async () => {
         if (isLoading || isProcessing) {
             setIsLogoutConfirmOpen(false);
@@ -721,10 +711,6 @@ export function VideoChatContainer() {
             await fetch("/api/logout", { method: "POST" });
         } catch (e) {}
         router.replace("/login");
-    };
-
-    const clearHistory = () => {
-        setIsConfirmOpen(true);
     };
 
     const handleSaveSettings = (newSettings: Settings) => {
@@ -816,16 +802,6 @@ export function VideoChatContainer() {
                                 <SettingsIcon className="h-4 w-4" />
                             </Button>
                             <Button
-                                id="btn-clear-history"
-                                size="sm"
-                                variant="ghost"
-                                onClick={clearHistory}
-                                disabled={messages.length === 0 || isLoading || isProcessing}
-                                title="Xóa lịch sử chat"
-                            >
-                                <Trash className="h-4 w-4" />
-                            </Button>
-                            <Button
                                 id="btn-logout"
                                 size="sm"
                                 variant="ghost"
@@ -875,16 +851,6 @@ export function VideoChatContainer() {
 
                 <SettingsDialog isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={settings} onSave={handleSaveSettings} />
 
-                <NativeConfirm
-                    id="modal-confirm-clear-history"
-                    open={isConfirmOpen}
-                    title="Xóa lịch sử chat"
-                    description="Bạn có chắc muốn xóa toàn bộ lịch sử chat? Hành động này không thể hoàn tác."
-                    confirmLabel="Xóa"
-                    cancelLabel="Hủy"
-                    onConfirm={doClearHistory}
-                    onCancel={() => setIsConfirmOpen(false)}
-                />
                 <NativeConfirm
                     id="modal-confirm-logout"
                     open={isLogoutConfirmOpen}
