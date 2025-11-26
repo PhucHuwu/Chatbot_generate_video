@@ -35,18 +35,20 @@ export async function GET(req: NextRequest) {
         });
 
         // Map Prisma model to frontend Message type
-        const formattedMessages = messages.map((msg) => ({
-            id: msg.id,
-            text: msg.text,
-            sender: msg.sender,
-            timestamp: msg.timestamp,
-            media: msg.mediaUrl
-                ? {
-                      src: msg.mediaUrl,
-                      type: msg.mediaType || "image",
-                  }
-                : undefined,
-        }));
+        const formattedMessages = messages.map(
+            (msg: { id: string; text: string; sender: string; timestamp: Date; mediaUrl: string | null; mediaType: string | null }) => ({
+                id: msg.id,
+                text: msg.text,
+                sender: msg.sender,
+                timestamp: msg.timestamp,
+                media: msg.mediaUrl
+                    ? {
+                          src: msg.mediaUrl,
+                          type: msg.mediaType || "image",
+                      }
+                    : undefined,
+            })
+        );
 
         return NextResponse.json(formattedMessages);
     } catch (error) {
